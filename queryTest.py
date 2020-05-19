@@ -35,9 +35,12 @@ def process_temp_dataframe(df,parameter_names):
 
 #vStationLibrary = ('00173478','00174736','00181303','00181305','00181306','00181310')
 
-timeStartString = '2020-05-12 00:00:00' #This is in PST
-timeEndString = '2020-05-12 01:00:00' 
-stationsToQuery = ['00173478']
+#Edit this if you wanna change date and time THIS IS IN PST
+timeStartString = '2020-05-12 00:00:00'
+timeEndString = '2020-05-12 23:59:59' 
+
+
+stationsToQuery = ['00173478'] #This is for v poteka testing UPLB
 
 #Below are parameters for V-Poteka Event Testing 
 # Uncomment lines labelled V POTEKA TESTING to try
