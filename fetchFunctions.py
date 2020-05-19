@@ -16,6 +16,12 @@ vStationLibrary = ('00173478','00174736','00181303','00181305','00181306','00181
 def convertToPhilippineTime(dateTime):
 	return dateTime + timedelta(hours=8)
 
+def convert_to_utc(PSTstring):
+	"""
+	Simply converts a PST datetime string of format YYYY-MM-DD HH:MM:SS to UTC for fetching data
+	"""
+	return PSTstring + timedelta(hours=-8)
+
 def get_count(q):
     count_q = q.statement.with_only_columns([func.count()]).order_by(None)
     count = q.session.execute(count_q).scalar()
@@ -54,10 +60,10 @@ def genericFetchFunction(datetimeStart, datetimeEnd,stationList,parameterList):
 	"""
 	timeStart= datetime.strptime(datetimeStart, '%Y-%m-%d %H:%M:%S')
 	timeEnd = datetime.strptime(datetimeEnd , '%Y-%m-%d %H:%M:%S')
-	timeStartPST = convertToPhilippineTime(timeStart)
-	timeEndPST = convertToPhilippineTime(timeEnd)
+	timeStartPST = convert_to_utc(timeStart)
+	timeEndPST = convert_to_utc(timeEnd)
 	#events = session.query(Reading).filter(Reading.time >= timeStartPST, Reading.time <= timeEndPST, Reading.station_id.in_(stationList), Reading.parameter_id.in_(parameterList))
-	events = pd.read_sql(session.query(Reading).filter(Reading.time >= timeStartPST, Reading.time <= timeEndPST, Reading.station_id.in_(stationList), Reading.parameter_id.in_(parameterList)).statement,session.bind) 
+	events = pd.read_sql(session.query(Reading).filter(Reading.time >= timeStartPST, Reading.time <= timeEndPST, Reading.station_id.in_(stationList), Reading.parameter_id.in_(parameterList)).order_by(Reading.parameter_id).statement,session.bind) 
 	#count = get_count(events)
 	count = events.size
 	return count,events
