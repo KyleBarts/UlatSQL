@@ -1,0 +1,27 @@
+﻿parameter_id,parameter_key,parameter_name,parameter_type,parameter_unit
+2,RI1,Rainfall Intensity,weather,mm/hr
+5,AT1,Air Temperature,weather,°C
+6,PRS,Air Pressure,weather,hPa
+9,RH1,Air Humidity,weather,%
+12,SOL,Solar Radiation,weather,W/m2
+48,WBG,Wet Bulb Temperature,weather,C
+136,WET,Rain Detection,weather,''
+137,WEA,Current Weather,weather,''
+138,TM0,Signal Start Time (T0) - PLATE,plate_lightning,msec
+139,TM1,Signal End Time (T1),plate_lightning,msec
+140,DE0,Peak Value at Start Time (DE0),plate_lightning,V
+141,DE1,Peak Value at End Time (DE1),plate_lightning,V
+142,GPS,GPS Status,plate_lightning,''
+143,PSD,Differential Standard Deviation,plate_lightning,mV
+144,FEM,Field Mill Data,field_mill,''
+145,TPS,Signal Start Time (T0) - VLF,vlf_lightning,sec
+146,TPP,Positive Peak Time (T1),vlf_lightning,sec
+147,TPZ,Zero-Crossing Time (T2),vlf_lightning,sec
+148,TPN,Negative Peak Time (T3),vlf_lightning,sec
+149,APP,Positive Peak Value (V1),vlf_lightning,V
+150,APN,Negative Peak Value (V3),vlf_lightning,V
+151,APF,Current Amplitude of Estimated Current Waveform at the TIme T1 (PE1),vlf_lightning,A.U
+152,APC,Current Amplitude of Estimated Current Waveform at the TIme T2 (PE2),vlf_lightning,A.U
+153,NFT,Nearby Lightning / Far Lightning,vlf_lightning,''
+154,SPE,Saturaion Identification of Electric Field Waveform,vlf_lightning,''
+155,VTR,Trigger Threshold Level,vlf_lightning,mV
