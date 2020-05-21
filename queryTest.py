@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 from time import time as timer
 import fetchFunctions as Fetcher
 import pandas as pd
+import processFunctions as Processer
 
 start = timer()
 
@@ -36,8 +37,8 @@ def process_temp_dataframe(df,parameter_names):
 #vStationLibrary = ('00173478','00174736','00181303','00181305','00181306','00181310')
 
 #Edit this if you wanna change date and time THIS IS IN PST
-timeStartString = '2020-05-12 00:00:00'
-timeEndString = '2020-05-12 23:59:59' 
+timeStartString = '2020-05-01 00:00:00'
+timeEndString = '2020-05-19 23:59:59' 
 
 
 stationsToQuery = ['00173478'] #This is for v poteka testing UPLB
@@ -46,10 +47,12 @@ stationsToQuery = ['00173478'] #This is for v poteka testing UPLB
 # Uncomment lines labelled V POTEKA TESTING to try
 # NOTE if you enable V TESTING lines make sure to disable P TESTING lines
 VstationsToQuery = ['00173478','00174736','00181303','00181305','00181306','00181310']
-parametersToQuery = [145,146,147,148]
+#parametersToQuery = [145,146,147,148]
+parametersToQuery = [145]
 
 #Below are parameters for P-Poteka Temp Testing
-pStationsToQuery = ['00174722']  #just keep adding to this list if you want to add more stations 
+#pStationsToQuery = ['00174722','00181293','00181285']  #just keep adding to this list if you want to add more stations 
+pStationsToQuery = ['00174722']
 tempParameterToQuery = [5]
 pPotekaParameterName = ['Temp']
 
@@ -59,7 +62,7 @@ as such if you want to include pressure
 REFER TO reading_details.csv for full list of parameters
 
 tempParameterToQuery = [5,6]
-pPotekaParameterName = ['Temp',"Pressure"]
+pPotekaParameterName = ['Temp','Pressure']
 """
 
 
@@ -72,15 +75,15 @@ for station in stations:
 print(f'Event Query made at {timer()-start}')
 
 #V POTEKA TESTING 
-#response = Fetcher.genericFetchFunction(timeStartString,timeEndString,VstationsToQuery,parametersToQuery)
+response = Fetcher.genericFetchFunction(timeStartString,timeEndString,VstationsToQuery,parametersToQuery)
 
 #P POTEKA TEMP TESTING
-response = Fetcher.genericFetchFunction(timeStartString,timeEndString,pStationsToQuery,tempParameterToQuery)
+#response = Fetcher.genericFetchFunction(timeStartString,timeEndString,pStationsToQuery,tempParameterToQuery)
 
 count = response[0] #Integer representing # of readings in query
 events = response[1] #Query object containing raw readings to be processed into dataframe
 
-
+print(f'response received at {timer()-start}')
 print(events)
 stringEvents = events.astype(str) #convert everything to string for pandas compatibility
 events.to_csv('standard.csv')
@@ -94,14 +97,19 @@ stringEvents.to_csv('rolledup.csv')
 print(stringEvents)
 
 #V POTEKA TESTING
-#testing = process_vlf_dataframe(stringEvents)
-
+#final_dataframe = process_vlf_dataframe(stringEvents)
+final_dataframe = stringEvents
+#final_dataframe = final_dataframe.drop(columns=['parameter_id','reading'])
 #P POTEKA TEMP TESTING
-final_dataframe = process_temp_dataframe(stringEvents,pPotekaParameterName)
-
+#final_dataframe = process_temp_dataframe(stringEvents,pPotekaParameterName)
+final_dataframe = Processer.per_day_event_count_no_events(final_dataframe)
 final_dataframe.to_csv('testing.csv')
 print(final_dataframe)
 
 
+
+
 print(f'process ended at {timer()-start}')
 print(f'Query has {count} items')
+print('Retrieved dataset has [1275405 rows x 4 columns]')
+print('Processed dataset has [85 rows x 3 columns]')

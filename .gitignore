@@ -1,0 +1,15 @@
+May 1 and 2.csv
+May Data.csv
+ntbk_out.csv
+rolledup.csv
+standard.csv
+testing.csv
+.ipynb_checkpoints/Untitled1-checkpoint.ipynb
+Untitled1.ipynb
+May Data Manip Per Hour.ipynb
+rolledup.csv
+standard.csv
+testing.csv
+*.csv
+*ipynb
+*pyc
