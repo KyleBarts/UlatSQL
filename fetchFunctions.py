@@ -16,6 +16,11 @@ vStationLibrary = ('00173478','00174736','00181303','00181305','00181306','00181
 def convertToPhilippineTime(dateTime):
 	return dateTime + timedelta(hours=8)
 
+
+def convertStringToPhilippineTime(input):
+	converted = datetime.strptime(input, '%Y-%m-%d %H:%M:%S')
+	return str(converted + timedelta(hours=8))
+
 def convert_to_utc(PSTstring):
 	"""
 	Simply converts a PST datetime string of format YYYY-MM-DD HH:MM:SS to UTC for fetching data
@@ -26,6 +31,15 @@ def get_count(q):
     count_q = q.statement.with_only_columns([func.count()]).order_by(None)
     count = q.session.execute(count_q).scalar()
     return count
+
+def generate_time_increments(increment, timeStart, timeEnd):
+	time_table = []
+	current_time = timeStart
+	while(current_time<=timeEnd):
+		current_time = current_time + timedelta(minutes=increment)
+		time_table.append(current_time)
+	return time_table
+
 
 #Fetch all Stations
 def fetchAllStations():
@@ -63,7 +77,49 @@ def genericFetchFunction(datetimeStart, datetimeEnd,stationList,parameterList):
 	timeStartPST = convert_to_utc(timeStart)
 	timeEndPST = convert_to_utc(timeEnd)
 	#events = session.query(Reading).filter(Reading.time >= timeStartPST, Reading.time <= timeEndPST, Reading.station_id.in_(stationList), Reading.parameter_id.in_(parameterList))
+	#events = pd.read_sql(session.query(Reading).filter(Reading.time >= timeStartPST, Reading.time <= timeEndPST, Reading.parameter_id.in_(parameterList)).order_by(Reading.parameter_id).statement,session.bind) 
 	events = pd.read_sql(session.query(Reading).filter(Reading.time >= timeStartPST, Reading.time <= timeEndPST, Reading.station_id.in_(stationList), Reading.parameter_id.in_(parameterList)).order_by(Reading.parameter_id).statement,session.bind) 
+	#count = get_count(events)
+	count = events.size
+	return count,events
+
+def generic_fetch_function_15mins(datetimeStart, datetimeEnd,stationList,parameterList):
+	""" The most customizable, generic fetch function keeping relative simpliciyu
+	INPUTS
+	string datetimeStart: starting date and time in string with format "YYYY-MM-DD HH:MM:SS"
+	string datetimeEnd: starting date and time in string with same format
+	list stationList: list of strings signifying station ID number example ['00173478','00174736']
+	list parameterList: list if ints signifying parameters to be searched example [145,146,147]
+	OUTPUTS
+	integer count: number of readings returned
+	events: pandas dataframe object of actual readings returned NOTE these are readings and not lightning events. 
+	refer to parameter list to know which readings refer to lightning events
+	"""
+	timeStart= datetime.strptime(datetimeStart, '%Y-%m-%d %H:%M:%S')
+	timeEnd = datetime.strptime(datetimeEnd , '%Y-%m-%d %H:%M:%S')
+	timeStartUTC = convert_to_utc(timeStart)
+	timeEndUTC = convert_to_utc(timeEnd)
+	time_table = generate_time_increments(15,timeStartUTC,timeEndUTC)
+	events = pd.read_sql(session.query(Reading).filter(Reading.time.in_(time_table) , Reading.station_id.in_(stationList), Reading.parameter_id.in_(parameterList)).order_by(Reading.parameter_id).statement,session.bind) 
+	#count = get_count(events)
+	count = events.size
+	return count,events
+
+def genericLatestWeatherReadingAllP(stationList,parameterList):
+	""" The most customizable, generic fetch function keeping relative simpliciyu
+	INPUTS
+	
+	OUTPUTS
+
+	
+	"""
+	timeEnd = datetime.utcnow() - timedelta(days=1)
+	timeStart= timeEnd - timedelta(minutes=60) 
+	
+	print(f'Hello this is before conversion {timeStart} until {timeEnd}')
+
+	#events = session.query(Reading).filter(Reading.time >= timeStartPST, Reading.time <= timeEndPST, Reading.station_id.in_(stationList), Reading.parameter_id.in_(parameterList))
+	events = pd.read_sql(session.query(Reading).filter(Reading.time >= timeStart, Reading.time <= timeEnd, Reading.station_id.in_(stationList), Reading.parameter_id.in_(parameterList)).order_by(Reading.parameter_id).statement,session.bind) 
 	#count = get_count(events)
 	count = events.size
 	return count,events
