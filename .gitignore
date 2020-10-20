@@ -13,3 +13,5 @@ testing.csv
 *.csv
 *ipynb
 *pyc
+*.html
+*.xlsx
