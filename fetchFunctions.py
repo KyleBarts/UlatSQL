@@ -44,8 +44,11 @@ def generate_time_increments(increment, timeStart, timeEnd):
 
 #Fetch all Stations
 def fetchAllStations():
-	stations = session.query(Station).all()
+	stations = pd.read_sql(session.query(Station).statement, session.bind)
+	#events = pd.read_sql(session.query(Reading).filter(Reading.time >= timeStartPST, Reading.time <= timeEndPST, Reading.station_id.in_(stationList), Reading.parameter_id.in_(parameterList)).order_by(Reading.parameter_id).statement,session.bind) 
 	return stations
+	
+
 
 
 

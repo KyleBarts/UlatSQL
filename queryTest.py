@@ -16,9 +16,9 @@ station_details = station_details.astype(str)
 
 
 #Edit this if you wanna change date and time THIS IS IN PST
-timeStartString = '2020-05-27 19:14:00'
-#timeEndString = '2020-05-27 23:59:59'
-timeEndString = '2020-05-27 19:15:59'
+timeStartString = '2020-05-15 07:45:00'
+timeEndString = '2020-05-15 23:59:59'
+#timeEndString = '2020-11-01 23:59:59'
 
 print(station_details)
 pStationIDList = station_details['Serial'].tolist()
@@ -27,7 +27,8 @@ pStationIDList = station_details['Serial'].tolist()
 # 	pStationIDList[count] = '00'+item
 # 	count=count+1
 print(pStationIDList)
-
+reading_details = pd.read_csv('reading_details.csv')
+print(reading_details)
 def process_vlf_dataframe(df):
 	"""
 	This function takes in a dataframe from a query with STRICTLY THE VLF PARAMETER LIST [145,146,147,147]
@@ -58,6 +59,17 @@ def process_temp_dataframe(df,parameter_names):
 # 	#current_station_name = 'hello'
 # 	return current_station_name
 
+def map_reading_names(df,reading_details):
+	
+	select_reading = reading_details.loc[reading_details['parameter_id'] == df.parameter_id]
+	#print(select_reading)
+	parameter_key = select_reading['parameter_key'].values[0]
+	#paired_up = (f'{parameter_key}',df.reading)
+	paired_up = f'{parameter_key}:{df.reading}'
+	return paired_up
+
+
+
 def v_lightning_event_generic(timeStart,timeEnd):
 	vStationsToQuery = ['00173478','00174736','00181303','00181305','00181306','00181310']
 	
@@ -69,6 +81,37 @@ def v_lightning_event_generic(timeStart,timeEnd):
 	print(events)
 	
 	final_dataframe = events.astype(str) #convert everything to string for pandas compatibility
+	#final_dataframe = final_dataframe.groupby(['datetime_read'])['station_id'].agg(' '.join).reset_index()
+
+	return (final_dataframe)
+
+def v_lightning_event_filtered(timeStart,timeEnd):
+	vStationsToQuery = ['00173478','00174736','00181303','00181305','00181306','00181310']
+	
+	parametersToQuery = [145,146, 147, 148, 149, 150,151,152] #TPP
+	response = Fetcher.genericFetchFunction(timeStart,timeEnd,vStationsToQuery,parametersToQuery)
+	
+	count = response[0] #Integer representing # of readings in query
+	events = response[1] #Query object containing raw readings to be processed into dataframe
+
+	print(f'response received at {timer()-start}')
+	print(events)
+	#events = events.groupby(['datetime_read','station_id'])
+	#events['new_reading'] = events.apply(lambda x: map_reading_names(x,reading_details),axis = 1)
+	print(events)
+	events = events.groupby(['datetime_read','station_id'])['reading'].agg([('readings',lambda x:  str(x.values)), 'count',('|TPP-TPN|',lambda x: abs( int(x.values[1][4:])-int(x.values[3][4:])))]).reset_index()
+
+	print(events)
+	filtered_events = events[(events['|TPP-TPN|']>=2) & (events['count']==8)].reset_index(drop=1)
+	print(filtered_events)
+
+	filtered_events['readings'] = filtered_events['readings'].apply(lambda x: x.strip('[]').replace('\'',''))
+	filtered_events[['TPS','TPP','TPZ','TPN','APP','APN','APF','APC']] = filtered_events['readings'].str.split(' ',expand=True)
+	filtered_events = filtered_events.drop(columns=['readings','count'])
+	filtered_events = filtered_events.groupby('datetime_read').agg(lambda x: list(x))
+	print(filtered_events)
+	filtered_events = filtered_events[ filtered_events['station_id'].map(len)>2 ]
+	final_dataframe = filtered_events.astype(str) #convert everything to string for pandas compatibility
 	#final_dataframe = final_dataframe.groupby(['datetime_read'])['station_id'].agg(' '.join).reset_index()
 
 	return (final_dataframe)
@@ -156,13 +199,14 @@ def p_lightning_event_generic(timeStart,timeEnd):
 
 def aws_generic(timeStart,timeEnd):
 	pStationsToQuery = pStationIDList 
-	pStationsToQuery = ['00174735']
+	pStationsToQuery = ['00181305']
 	#aws_parameters = [2,5,6,9,12,48,125,126,127,128,129,130,131,132,133,134,135,136,137]
+	aws_parameters = [133]
 	#133 is Max wind speed in 1 min
 	#127 is Effective rain amount
 	#5 is Temperature
 
-	response = Fetcher.genericFetchFunction(timeStart,timeEnd,pStationsToQuery,[127])
+	response = Fetcher.genericFetchFunction(timeStart,timeEnd,pStationsToQuery,[133])
 	count = response[0] #Integer representing # of readings in query
 	events = response[1] #Query object containing raw readings to be processed into dataframe
 	print(f'response received at {timer()-start}')
@@ -219,9 +263,61 @@ def qgis_format_generator_temp(timeStart,timeEnd):
 		final_dataframe[time_stamp] = final_dataframe.apply(Processer.column_parser,args=(time_stamp,),axis=1)
 
 	final_dataframe = final_dataframe.drop(columns=['time','reading'])
+	#final_dataframe = final_dataframe.reset_index(drop=True)
 
-	final_dataframe.insert(1,'Station Name', '')
+	final_dataframe.insert(0,'Station Name', '')
 	final_dataframe['Station Name'] = final_dataframe.apply(Processer.join_station_name_to_row,args=(station_details,), axis=1)
+	final_dataframe.insert(1,'LON', '')
+	final_dataframe['LON'] = final_dataframe.apply(Processer.return_lon_to_row,args=(stations,), axis=1)
+	final_dataframe.insert(1,'LAT', '')
+	final_dataframe['LAT'] = final_dataframe.apply(Processer.return_lat_to_row,args=(stations,), axis=1)
+
+	
+	final_dataframe = final_dataframe.rename(columns={'station_id': 'Station Code'})
+	print(final_dataframe)
+	return final_dataframe
+
+def qgis_format_generator_pressure(timeStart,timeEnd):
+	pStationsToQuery = pStationIDList
+	rainParameterToQuery = [127]
+	tempParameterToQuery = [6]
+	response = Fetcher.generic_fetch_function_15mins(timeStart,timeEnd,pStationsToQuery,tempParameterToQuery)
+	count = response[0] #Integer representing # of readings in query
+	events = response[1] #Query object containing raw readings to be processed into dataframe
+	print(f'response received at {timer()-start}')
+	print(events)
+	stringEvents  = events.astype(str)
+	stringEvents['datetime_read'] = stringEvents['datetime_read'].apply(Fetcher.convertStringToPhilippineTime)
+	print(stringEvents)
+	final_dataframe = stringEvents
+	stringEvents['reading'] = stringEvents['reading'].apply(Processer.convert_pressure)
+	time_columns = pd.Series(Fetcher.generate_time_increments(15, datetime.strptime(timeStartString, '%Y-%m-%d %H:%M:%S'), datetime.strptime(timeEndString, '%Y-%m-%d %H:%M:%S'))).astype(str)
+	time_columns = time_columns.apply(lambda x: x[11:16])
+	print(time_columns)
+	#For 15 min temps
+
+	final_dataframe = final_dataframe.sort_values(by=['datetime_read'])
+	#final_dataframe['time'] = (final_dataframe['datetime_read']+'')[:]
+	final_dataframe['time'] =  final_dataframe['datetime_read'].apply(lambda x: x[11:16])
+	final_dataframe = final_dataframe.sort_values(by=['time'])
+	final_dataframe = final_dataframe.groupby(['station_id'])['time','reading'].agg(' '.join).reset_index()
+	final_dataframe['time'] = final_dataframe['time'].apply(lambda x: x.split(' '))
+	final_dataframe['reading'] = final_dataframe['reading'].apply(lambda x: x.split(' '))
+	print(final_dataframe)
+	for time_stamp in time_columns:
+		final_dataframe[time_stamp] = final_dataframe.apply(Processer.column_parser,args=(time_stamp,),axis=1)
+
+	final_dataframe = final_dataframe.drop(columns=['time','reading'])
+
+	final_dataframe.insert(0,'Station Name', '')
+	final_dataframe['Station Name'] = final_dataframe.apply(Processer.join_station_name_to_row,args=(station_details,), axis=1)
+	final_dataframe.insert(1,'LON', '')
+	final_dataframe['LON'] = final_dataframe.apply(Processer.return_lon_to_row,args=(stations,), axis=1)
+	final_dataframe.insert(1,'LAT', '')
+	final_dataframe['LAT'] = final_dataframe.apply(Processer.return_lat_to_row,args=(stations,), axis=1)
+	
+	final_dataframe['Station Name'] = final_dataframe.apply(Processer.join_station_name_to_row,args=(station_details,), axis=1)
+	final_dataframe = final_dataframe.rename(columns={'station_id': 'Station Code'})
 	print(final_dataframe)
 	return final_dataframe
 
@@ -328,8 +424,9 @@ pPotekaParameterName = ['Temp','Pressure']
 print(f'Station Query made at {timer()-start}')
 #This is simply for testing if the code can connect to the server by fetching the list of stations
 stations = Fetcher.fetchAllStations()
-for station in stations:
-	print(f'{station.station_type} Station {station.station_id} is located in {station.location} at position ({station.latitude},{station.longitude})')
+print(stations)
+# for station in stations:
+# 	print(f'{station.station_type} Station {station.station_id} is located in {station.location} at position ({station.latitude},{station.longitude})')
 
 print(f'Event Query made at {timer()-start}')
 
@@ -410,9 +507,16 @@ final_dataframe = stringEvents
 #final_dataframe = v_lightning_event_monthly_count(timeStartString, timeEndString)
 
 #For V Poteka Generic Event Fetch TPP
-final_dataframe = v_lightning_event_generic(timeStartString, timeEndString)
-final_dataframe = Processer.append_microseconds_to_datetime(final_dataframe)
-final_dataframe = Processer.append_time_diff(final_dataframe)
+# final_dataframe = v_lightning_event_generic(timeStartString, timeEndString)
+# final_dataframe = Processer.append_microseconds_to_datetime(final_dataframe)
+# final_dataframe = Processer.append_time_diff(final_dataframe)
+
+#V Poteka IDL Filtering
+#final_dataframe = v_lightning_event_filtered(timeStartString, timeEndString)
+
+
+#final_dataframe = Processer.append_microseconds_to_datetime(final_dataframe)
+#final_dataframe = Processer.append_time_diff(final_dataframe)
 
 #For P Poteka Lightning Event Count Per Minute
 #final_dataframe = p_lightning_event_minute_count(timeStartString, timeEndString)
@@ -423,6 +527,8 @@ final_dataframe = Processer.append_time_diff(final_dataframe)
 #For Generating QGIS Format
 #final_dataframe = qgis_format_generator_temp(timeStartString, timeEndString)
 
+#final_dataframe = qgis_format_generator_pressure(timeStartString, timeEndString)
+
 #For Generating QGIS Lightning Event
 #final_dataframe = qgis_format_generator_lightning_count(timeStartString, timeEndString)
 
@@ -432,11 +538,33 @@ final_dataframe = Processer.append_time_diff(final_dataframe)
 #final_dataframe.to_csv('may_15_ERA.csv')
 #final_dataframe = final_dataframe.rename(columns={"datetime_read":"Date & Time (PST)", "count":"Lightning Events per Minute"})
 
+
+
 #Saving to csv for vizualization
-final_dataframe.to_csv('./outputs/PasigExperiments.csv')
-print(final_dataframe)
+#final_dataframe.to_csv('./outputs/may_15_pressure.csv', index=False)
+#print(final_dataframe)
 
 
+
+#timestamps = final_dataframe.index.astype(str).tolist()
+#print(timestamps)
+
+#pagasa_data = pd.read_csv('./lightning_data_monthly_2020/lightning_data_05_2020.csv', dtype=object)
+#pagasa_data_range = pagasa_data
+
+# pagasa_data = pagasa_data[pagasa_data.lightning_time.isin(timestamps)]
+
+# pagasa_data_range['lightning_time'] = pd.to_datetime(pagasa_data_range['lightning_time'])
+# date_mask = (pagasa_data_range['lightning_time'] > timeStartString) & (pagasa_data_range['lightning_time'] <= timeEndString)
+# pagasa_data_range = pagasa_data_range.loc[date_mask]
+# print(pagasa_data.astype(str))
+# print(f'pagasa_data has {len(pagasa_data.index)} lightning events')
+# print(f'poteka_data has {len(final_dataframe.index)} lightning events')
+# pagasa_data = pagasa_data[pagasa_data['flash_type']=='1']
+# print(pagasa_data.astype(str))
+# print(f'pagasa_data has {len(pagasa_data.index)} lightning events')
+# pagasa_data.to_csv('./outputs/Oct30_Pasig_Pagasa_Lightning.csv')
+# pagasa_data_range.to_csv('./outputs/Oct30_Pasig_Pagasa_Range_Lightning.csv')
 
 
 print(f'process ended at {timer()-start}')

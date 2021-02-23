@@ -20,9 +20,18 @@ def convert_PST(time):
     return str(output_time)
 
 def convert_temp(in_temp):
-    if(in_temp=="////"):
-        return '25.0'
+    if(in_temp=="////" or in_temp=="ERR"):
+        return '0'
+    if('.' in in_temp):
+        return in_temp
     return str(float(in_temp)/10)
+
+def convert_pressure(in_pressure):
+    if(in_pressure=="/////" or in_pressure=="ERR"):
+        return '0'
+    if('.' in in_pressure):
+        return in_pressure
+    return str(float(in_pressure)/10)
 
 def convert_rain(in_rain):
     if(in_rain=="////"):
@@ -241,3 +250,23 @@ def join_station_name_to_row(row, station_details):
 	row['Station Name'] = current_station_name
 	#current_station_name = 'hello'
 	return current_station_name
+
+def return_lat_to_row(row, station_details):
+	current_serial = row['station_id']
+	current_details = station_details[station_details['station_id']==current_serial]
+	current_lat = current_details['latitude'].iloc[0]
+	#current_station_name = current_details['Station Name']
+	#print(current_station_name)
+	row['LAT'] = current_lat
+	#current_station_name = 'hello'
+	return current_lat
+
+def return_lon_to_row(row, station_details):
+	current_serial = row['station_id']
+	current_details = station_details[station_details['station_id']==current_serial]
+	current_lon = current_details['longitude'].iloc[0]
+	#current_station_name = current_details['Station Name']
+	#print(current_station_name)
+	row['lon'] = current_lon
+	#current_station_name = 'hello'
+	return current_lon
