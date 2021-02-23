@@ -272,4 +272,4 @@ def update_output(n_clicks, station_name, reading_name, start_date, end_date):
 
 
 if __name__ == '__main__':
-    app.run_server(debug=True)
+    app.run_server(debug=True, port=8080, host='0.0.0.0')
