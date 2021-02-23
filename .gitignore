@@ -10,8 +10,11 @@ May Data Manip Per Hour.ipynb
 rolledup.csv
 standard.csv
 testing.csv
-*.csv
+
 *ipynb
 *pyc
 *.html
 *.xlsx
+/outputs
+/datasets
+/lightning_data_monthly_2020
