@@ -156,7 +156,14 @@ def update_output(n_clicks, station_name, reading_name, start_date, end_date):
             events['reading'] = events['reading'].apply(Processer.convert_temp)
         if(parameter_id==6):
             events['reading'] = events['reading'].apply(Processer.convert_pressure)
+
+        #events['reading'] = events['reading'].to_numeric()
+        print(events)
         fig = px.scatter(events, x='datetime_read', y='reading')
+        fig.update_traces(mode='lines+markers')
+        fig.update_yaxes(title=reading_name)
+        fig.update_xaxes(title='Date & Time (PST)')
+
         
 
         return fig
