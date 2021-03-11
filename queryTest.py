@@ -16,8 +16,8 @@ station_details = station_details.astype(str)
 
 
 #Edit this if you wanna change date and time THIS IS IN PST
-timeStartString = '2020-05-15 07:45:00'
-timeEndString = '2020-05-15 23:59:59'
+timeStartString = '2020-01-12 18:30:00'
+timeEndString = '2020-01-12 21:29:59'
 #timeEndString = '2020-11-01 23:59:59'
 
 print(station_details)
@@ -104,7 +104,7 @@ def v_lightning_event_filtered(timeStart,timeEnd):
 	print(events)
 	filtered_events = events[(events['|TPP-TPN|']>=2) & (events['count']==8)].reset_index(drop=1)
 	print(filtered_events)
-
+	filtered_events = filtered_events.astype(str)
 	filtered_events['readings'] = filtered_events['readings'].apply(lambda x: x.strip('[]').replace('\'',''))
 	filtered_events[['TPS','TPP','TPZ','TPN','APP','APN','APF','APC']] = filtered_events['readings'].str.split(' ',expand=True)
 	filtered_events = filtered_events.drop(columns=['readings','count'])
@@ -512,11 +512,11 @@ final_dataframe = stringEvents
 # final_dataframe = Processer.append_time_diff(final_dataframe)
 
 #V Poteka IDL Filtering
-#final_dataframe = v_lightning_event_filtered(timeStartString, timeEndString)
+# final_dataframe = v_lightning_event_filtered(timeStartString, timeEndString)
 
 
-#final_dataframe = Processer.append_microseconds_to_datetime(final_dataframe)
-#final_dataframe = Processer.append_time_diff(final_dataframe)
+# final_dataframe = Processer.append_microseconds_to_datetime(final_dataframe)
+# final_dataframe = Processer.append_time_diff(final_dataframe)
 
 #For P Poteka Lightning Event Count Per Minute
 #final_dataframe = p_lightning_event_minute_count(timeStartString, timeEndString)

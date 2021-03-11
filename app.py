@@ -11,7 +11,7 @@ import pandas as pd
 import plotly.express as px
 import fetchFunctions as Fetcher
 import processFunctions as Processer
-import queryTest as queryTest
+#import queryTest as queryTest
 
 station_details = pd.read_csv('StationDetails2.csv', dtype=object, names=['Station Name','Serial'])
 station_details = station_details.astype(str)
@@ -139,7 +139,9 @@ def update_output(n_clicks, station_name, reading_name, start_date, end_date):
 
     parameter_data = reading_details.loc[reading_details['parameter_name'] == reading_name]
     parameter_id = parameter_data['parameter_id'].item()
+    parameter_type = parameter_data['parameter_type'].item()
     print(parameter_id)
+    print(parameter_type)
 
     if None not in (station_name, reading_name, start_date, end_date):
         print('COMPLETE')
@@ -148,19 +150,28 @@ def update_output(n_clicks, station_name, reading_name, start_date, end_date):
 
         station_list.append(station_id)
         reading_list.append(parameter_id)
-        response = Fetcher.genericFetchFunction(start_date,end_date,station_list,reading_list)
+        if(parameter_type=='weather'):
+            response = Fetcher.genericFetchFunction(start_date,end_date,station_list,reading_list)
+            events = response[1]
+            if(parameter_id==5):
+                events['reading'] = events['reading'].apply(Processer.convert_temp)
+            if(parameter_id==6):
+                events['reading'] = events['reading'].apply(Processer.convert_pressure)
+            
+            fig = px.scatter(events, x='datetime_read', y='reading')
+        if(parameter_type=='health'):
+            response = Fetcher.genericHealthFetchFunction(start_date,end_date,station_list,reading_list)
+            events = response[1]
+            fig = px.scatter(events, x='datetime_read', y='health')
         events = response[1]
         print(events)
         #Apply Conversion for Temp
-        if(parameter_id==5):
-            events['reading'] = events['reading'].apply(Processer.convert_temp)
-        if(parameter_id==6):
-            events['reading'] = events['reading'].apply(Processer.convert_pressure)
+
 
         #events['reading'] = events['reading'].to_numeric()
         print(events)
-        fig = px.scatter(events, x='datetime_read', y='reading')
-        fig.update_traces(mode='lines+markers')
+        #fig = px.scatter(events, x='datetime_read', y='reading')
+        #fig.update_traces(mode='lines+markers')
         fig.update_yaxes(title=reading_name)
         fig.update_xaxes(title='Date & Time (PST)')
 
