@@ -155,11 +155,8 @@ def update_output(n_clicks, station_name, reading_name, start_date, end_date):
         if(parameter_type=='weather'):
             response = Fetcher.genericFetchFunction(start_date,end_date,station_list,reading_list)
             events = response[1]
-            if(parameter_id==5):
-                events['reading'] = events['reading'].apply(Processer.convert_temp)
-            if(parameter_id==6):
-                events['reading'] = events['reading'].apply(Processer.convert_pressure)
-            
+
+            events['reading'] = events['reading'].astype(float)
             fig = px.scatter(events, x='datetime_read', y='reading')
         if(parameter_type=='health'):
             response = Fetcher.genericHealthFetchFunction(start_date,end_date,station_list,reading_list)
