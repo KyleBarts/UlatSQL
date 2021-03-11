@@ -19,6 +19,18 @@ def convert_PST(time):
     output_time = datetime.strptime(time, '%Y-%m-%d %H:%M:%S') + timedelta(hours=8)
     return str(output_time)
 
+def applyConversionFactor(input_value,parameter_id):
+    #Catch Error Values
+    divide_by_ten_parameters = [2,125,126,127,128,5,6,9,129,132,133,135,48]
+    if(input_value=="////" or input_value=="ERR" or input_value=="/////"):
+        return '0'
+    #Catch Values with conversion factor applied
+    elif('.' in input_value):
+        return input_value
+    #Catch all parameters with a 10 times gain in the database
+    elif(parameter_id in divide_by_ten_parameters):
+        return str(float(input_value)/10)
+
 def convert_temp(in_temp):
     if(in_temp=="////" or in_temp=="ERR"):
         return '0'
