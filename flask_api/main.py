@@ -80,7 +80,6 @@ def fetch_earthnetworks_data():
     data_response= datefilter.to_json(orient="records")
     
     
-    data_response = build_response(data_response)
     
     return data_response
 
