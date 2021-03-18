@@ -36,6 +36,10 @@ def check_getEN_inputs(args):
         print(end_date)
         en_inputs['end_date'] = end_date
         int_end_month = end_date.month
+    if 'flash_type' not in args:
+        en_inputs['flash_type'] = 0
+    else:
+        en_inputs['flash_type'] = int(args.get('flash_type'))
     print('months below')
     filename_list = []
     current_date = start_date
@@ -53,6 +57,7 @@ def check_getEN_inputs(args):
     # for month in range(int_start_month,int_end_month+1):
     en_inputs['files'] = filename_list
     #     print(month)
+    
     return en_inputs
 
 
@@ -66,10 +71,15 @@ def fetch_earthnetworks_data():
     df_from_each_file = (pd.read_csv(f) for f in files_to_read)
     concatenated_df   = pd.concat(df_from_each_file, ignore_index=True)
 
-    cg_df = concatenated_df[(concatenated_df.flash_type==0)]
-    cg_df['lightning_time'] = pd.to_datetime(cg_df['lightning_time'], format='%Y-%m-%d %H:%M:%S')
+
+    if user_input['flash_type'] == 2:
+        flash_filtered_df = concatenated_df
+    else:
+        flash_filtered_df = concatenated_df[(concatenated_df.flash_type==user_input['flash_type'])]
     
-    datefilter = cg_df[((cg_df.lightning_time>user_input.get('start_date')) & (cg_df.lightning_time<user_input.get('end_date')))]
+    flash_filtered_df['lightning_time'] = pd.to_datetime(flash_filtered_df['lightning_time'], format='%Y-%m-%d %H:%M:%S')
+    
+    datefilter = flash_filtered_df[((flash_filtered_df.lightning_time>user_input.get('start_date')) & (flash_filtered_df.lightning_time<user_input.get('end_date')))]
 
     datefilter = datefilter.reset_index(drop=True)
     datefilter = datefilter.drop(columns=['Unnamed: 0', 'id'])
