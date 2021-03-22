@@ -602,20 +602,20 @@ final_dataframe = stringEvents
 #final_dataframe.to_csv('./outputs/may_15_pressure.csv', index=False)
 #print(final_dataframe)
 
-import requests
+# import requests
 
-payload = {'start_date': timeStartString,
-			'end_date':timeEndString,
-			'flash_type':0
-		}
-pagasa_response = requests.get(
-    'http://192.168.6.179:8080/earthnetworks',
-    params=payload,
-)
+# payload = {'start_date': timeStartString,
+# 			'end_date':timeEndString,
+# 			'flash_type':0
+# 		}
+# pagasa_response = requests.get(
+#     'http://192.168.6.179:8080/earthnetworks',
+#     params=payload,
+# )
 
-pagasa_json = pagasa_response.content
-pagasa_df = pd.read_json(pagasa_json,orient='records')
-print(pagasa_df)
+# pagasa_json = pagasa_response.content
+# pagasa_df = pd.read_json(pagasa_json,orient='records')
+# print(pagasa_df)
 
 
 #timestamps = final_dataframe.index.astype(str).tolist()
