@@ -84,7 +84,6 @@ def genericFetchFunction(datetimeStart, datetimeEnd,stationList,parameterList):
 	#events = session.query(Reading).filter(Reading.time >= timeStartPST, Reading.time <= timeEndPST, Reading.station_id.in_(stationList), Reading.parameter_id.in_(parameterList))
 	#events = pd.read_sql(session.query(Reading).filter(Reading.time >= timeStartPST, Reading.time <= timeEndPST, Reading.parameter_id.in_(parameterList)).order_by(Reading.parameter_id).statement,session.bind) 
 	events = pd.read_sql(session.query(Reading).filter(Reading.time >= timeStartPST, Reading.time <= timeEndPST, Reading.station_id.in_(stationList), Reading.parameter_id.in_(parameterList)).order_by(Reading.parameter_id).statement,session.bind) 
-	print(events)
 	events['datetime_read'] = events['datetime_read'].apply(lambda x: x + timedelta(hours=8))
 	events['reading'] = events.apply(lambda x: Processer.applyConversionFactor(x['reading'],x['parameter_id']),axis=1)
 	print(events)
@@ -111,6 +110,7 @@ def genericHealthFetchFunction(datetimeStart, datetimeEnd,stationList,parameterL
 
 	events = pd.read_sql(session.query(Health).filter(Health.time >= timeStartPST, Health.time <= timeEndPST, Health.station_id.in_(stationList), Health.parameter_id.in_(parameterList)).order_by(Health.parameter_id).statement,session.bind) 
 	events['datetime_read'] = events['datetime_read'].apply(lambda x: x + timedelta(hours=8))
+	events['health'] = events.apply(lambda x: Processer.applyConversionFactor(x['health'],x['parameter_id']),axis=1)
 	#count = get_count(events)
 	count = events.size
 	return count,events

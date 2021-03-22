@@ -6,11 +6,13 @@ from datetime import datetime, timedelta
 from time import time as timer
 import dash
 import dash_core_components as dcc
+import plotly.graph_objs as go
 import dash_html_components as html
 import pandas as pd
 import plotly.express as px
 import fetchFunctions as Fetcher
 import processFunctions as Processer
+import requests
 #import queryTest as queryTest
 
 
@@ -36,59 +38,49 @@ available_indicators = df['Indicator Name'].unique()
 station_names = stations['location']
 
 app.layout = html.Div([
+    dcc.Location(id='url', refresh=False),
+    html.Div(id='page-content')
+])
+
+index_page = html.Div([
+    dcc.Link('Go to POTEKA Data viewer', href='/poteka'),
+    html.Br(),
+    dcc.Link('Go to EarthNetworks Data Viewer', href='/earthnetworks'),
+])
+
+
+
+poteka_layout = html.Div([
     html.Div([
-        html.Div([
+        #Station Select Dropdown
+        html.Div([ 
                 dcc.Dropdown(
-                    id='station-select',
+                    id='poteka-station-select',
                     options=[{'label': i, 'value': i} for i in station_names],
                     value='Station names',
                     placeholder="Select POTEKA Station "
                 )
             ],
             style={'width': '49%', 'display': 'inline-block'}),
-            # html.Div([
-            #     dcc.Dropdown(
-            #         id='crossfilter-xaxis-column',
-            #         options=[{'label': i, 'value': i} for i in available_indicators],
-            #         value='Fertility rate, total (births per woman)'
-            #     ),
-            #     dcc.RadioItems(
-            #         id='crossfilter-xaxis-type',
-            #         options=[{'label': i, 'value': i} for i in ['Linear', 'Log']],
-            #         value='Linear',
-            #         labelStyle={'display': 'inline-block'}
-            #     )
-            # ],
-            # style={'width': '49%', 'display': 'inline-block'}),
-
+        #Start & End Date Text Inputs
         html.Div([
                 dcc.Input(
-                id="input-start-date",
+                id="poteka-input-start-date",
                 type="text",
                 placeholder="input start date (ex. '2020-05-15 07:45:00') ",
                 style={'width': '49%', 'display': 'inline-block'}
                 ),
                 dcc.Input(
-                id="input-end-date",
+                id="poteka-input-end-date",
                 type="text",
                 placeholder="input end date",
                 style={'width': '49%', 'display': 'inline-block'}
                 )
-                # dcc.Dropdown(
-                #     id='month',
-                #     options=[{'label': i, 'value': i} for i in available_indicators],
-                #     value='Life expectancy at birth, total (years)'
-                # ),
-                # dcc.RadioItems(
-                #     id='crossfilter-yaxis-type',
-                #     options=[{'label': i, 'value': i} for i in ['Linear', 'Log']],
-                #     value='Linear',
-                #     labelStyle={'display': 'inline-block'}
-                # )
             ], style={'width': '49%', 'float': 'right', 'display': 'inline-block'}),
+        #Parameter Select Dropdown
         html.Div([
                 dcc.Dropdown(
-                    id='reading-select',
+                    id='poteka-reading-select',
                     options=[{'label': i, 'value': i} for i in parameter_names],
                     value='reading names',
                     placeholder="Select Parameter to View",
@@ -96,7 +88,7 @@ app.layout = html.Div([
                     
                 ),
                 html.Button('Submit', 
-                id='submit-val', 
+                id='poteka_submit-val', 
                 n_clicks=0,
                 style={'width': '25%', 'display': 'inline-block'})
             ], style={'width': '100%', 'display': 'inline-block'})
@@ -107,16 +99,7 @@ app.layout = html.Div([
         'backgroundColor': 'rgb(250, 250, 250)',
         'padding': '25px 5px'
     }),
-    # html.Div([
-
-    #     html.Button('Submit', id='submit-val', n_clicks=0),
-    # ], style={'display': 'inline-block','width': '100%'}),
-    # html.Div([
-    #     dcc.Graph(
-    #         id='crossfilter-indicator-scatter',
-    #         hoverData={'points': [{'customdata': 'Japan'}]}
-    #     )
-    # ], style={'width': '49%', 'display': 'inline-block', 'padding': '0 20'}),
+    #Graph 
     html.Div([
         dcc.Graph(id='x-time-series')
     ], style={'display': 'inline-block', 'width': '100%'})
@@ -124,11 +107,11 @@ app.layout = html.Div([
 
 @app.callback(
     dash.dependencies.Output('x-time-series', 'figure'),
-    [dash.dependencies.Input('submit-val', 'n_clicks'),
-    dash.dependencies.State('station-select', 'value'),
-    dash.dependencies.State('reading-select', 'value'),
-    dash.dependencies.State('input-start-date', 'value'),
-    dash.dependencies.State('input-end-date', 'value')])
+    [dash.dependencies.Input('poteka-submit-val', 'n_clicks'),
+    dash.dependencies.State('poteka-station-select', 'value'),
+    dash.dependencies.State('poteka-reading-select', 'value'),
+    dash.dependencies.State('poteka-input-start-date', 'value'),
+    dash.dependencies.State('poteka-input-end-date', 'value')])
 def update_output(n_clicks, station_name, reading_name, start_date, end_date):
     out_string = 'The input value was "{}" and the button has been clicked {} times'.format(
         station_name,
@@ -177,106 +160,161 @@ def update_output(n_clicks, station_name, reading_name, start_date, end_date):
         
 
         return fig
+mapbox_access_token = open(".mapbox_token").read()
 
+layout = go.Layout(
+        title="My Dash Graph",
+        height=800
+        )
+earthnetworks_fig = go.Figure(layout=layout)
+earthnetworks_fig.add_trace(go.Scattermapbox(
+lat=[],
+lon=[],
+mode='markers',
+marker=go.scattermapbox.Marker(
+    size=5,
+    color='rgb(255,255,0)',
+    opacity=0.7
+),
+text=[],
+hoverinfo='text'
+))
+
+earthnetworks_fig.update_layout(
+    title='PAGASA Lightning Events',
+    autosize=True,
+    hovermode='closest',
+    showlegend=False,
+    mapbox=dict(
+        accesstoken=mapbox_access_token,
+        bearing=0,
+        center=dict(
+            lat=14.57773,
+            lon=121.034
+        ),
+        pitch=0,
+        zoom=4,
+        style='dark'
+    ),
+)
+
+earthnetworks_layout = html.Div([
+    html.Div([
+        #Station Select Dropdown
+
+        #Start & End Date Text Inputs
+        html.Div([
+                dcc.Input(
+                id="earthnetworks-input-start-date",
+                type="text",
+                placeholder="input start date (ex. '2020-05-15 07:45:00') ",
+                style={'width': '49%', 'display': 'inline-block'}
+                ),
+                dcc.Input(
+                id="earthnetworks-input-end-date",
+                type="text",
+                placeholder="input end date",
+                style={'width': '49%', 'display': 'inline-block'}
+                )
+            ], style={'width': '49%', 'float': 'left', 'display': 'inline-block'}),
+        #Parameter Select Dropdown
+        html.Div([
+
+                html.Button('Submit', 
+                id='earthnetworks-submit-val', 
+                n_clicks=0,
+                style={'width': '25%', 'display': 'inline-block'})
+            ], style={'width': '100%', 'display': 'inline-block'})
+
+
+    ], style={
+        'borderBottom': 'thin lightgrey solid',
+        'backgroundColor': 'rgb(250, 250, 250)',
+        'padding': '25px 5px'
+    }),
+    #Graph 
+    html.Div([
+        
+        dcc.Graph(id='earthnetworks-map', figure=earthnetworks_fig)
+    ], style={'display': 'inline-block', 'width': '100%'})
+])
+
+@app.callback(
+    dash.dependencies.Output('earthnetworks-map', 'figure'),
+    [dash.dependencies.Input('earthnetworks-submit-val', 'n_clicks'),
+    dash.dependencies.State('earthnetworks-input-start-date', 'value'),
+    dash.dependencies.State('earthnetworks-input-end-date', 'value')])
+def earthnetworks_update_output(n_clicks, start_date, end_date):
+    out_string = 'The input value was "{}" and the button has been clicked {} times'.format(
+        start_date,
+        n_clicks
+    )
+    print(out_string)
+    if None not in (start_date, end_date):
+        payload = {'start_date': start_date,
+                'end_date':end_date,
+                'flash_type':0
+            }
+        pagasa_response = requests.get(
+            'http://192.168.6.179:8080/earthnetworks',
+            params=payload,
+        )
+
+        pagasa_json = pagasa_response.content
+        pagasa_df = pd.read_json(pagasa_json,orient='records')
+        print(pagasa_df)
+        
+        en_data_lat = pagasa_df.latitude
+        en_data_lon = pagasa_df.longitude
+        en_data_time = pagasa_df.lightning_time
+        fig = go.Figure()
+
+        fig.add_trace(go.Scattermapbox(
+        lat=en_data_lat,
+        lon=en_data_lon,
+        mode='markers',
+        marker=go.scattermapbox.Marker(
+            size=5,
+            color='rgb(255,255,0)',
+            opacity=0.7
+        ),
+        text=en_data_time,
+        hoverinfo='text'
+        ))
+
+        fig.update_layout(
+            title='PAGASA Lightning Events',
+            autosize=True,
+            hovermode='closest',
+            showlegend=False,
+            mapbox=dict(
+                accesstoken=mapbox_access_token,
+                bearing=0,
+                center=dict(
+                    lat=14.57773,
+                    lon=121.034
+                ),
+                pitch=0,
+                zoom=4,
+                style='dark'
+            ),
+        )
+
+
+    return fig
     
-
-# def create_time_series(dff, axis_type, title):
-
-#     fig = px.scatter(dff, x='Reading', y='Value')
-
-#     fig.update_traces(mode='lines+markers')
-
-#     fig.update_xaxes(showgrid=False)
-
-#     fig.update_yaxes(type='linear' if axis_type == 'Linear' else 'log')
-
-#     fig.add_annotation(x=0, y=0.85, xanchor='left', yanchor='bottom',
-#                        xref='paper', yref='paper', showarrow=False, align='left',
-#                        bgcolor='rgba(255, 255, 255, 0.5)', text=title)
-
-#     fig.update_layout(height=225, margin={'l': 20, 'b': 30, 'r': 10, 't': 10})
-
-#     return fig
-# @app.callback(
-#     dash.dependencies.Output('crossfilter-indicator-scatter', 'figure'),
-#     [dash.dependencies.Input('crossfilter-xaxis-column', 'value'),
-#      dash.dependencies.Input('crossfilter-yaxis-column', 'value'),
-#      dash.dependencies.Input('crossfilter-xaxis-type', 'value'),
-#      dash.dependencies.Input('crossfilter-yaxis-type', 'value'),
-#      dash.dependencies.Input('crossfilter-year--slider', 'value')])
-# def update_graph(xaxis_column_name, yaxis_column_name,
-#                  xaxis_type, yaxis_type,
-#                  year_value):
-#     dff = df[df['Year'] == year_value]
-
-#     fig = px.scatter(x=dff[dff['Indicator Name'] == xaxis_column_name]['Value'],
-#             y=dff[dff['Indicator Name'] == yaxis_column_name]['Value'],
-#             hover_name=dff[dff['Indicator Name'] == yaxis_column_name]['Country Name']
-#             )
-
-#     fig.update_traces(customdata=dff[dff['Indicator Name'] == yaxis_column_name]['Country Name'])
-
-#     fig.update_xaxes(title=xaxis_column_name, type='linear' if xaxis_type == 'Linear' else 'log')
-
-#     fig.update_yaxes(title=yaxis_column_name, type='linear' if yaxis_type == 'Linear' else 'log')
-
-#     fig.update_layout(margin={'l': 40, 'b': 40, 't': 10, 'r': 0}, hovermode='closest')
-
-#     return fig
-
-
-# def create_time_series(dff, axis_type, title):
-
-#     fig = px.scatter(dff, x='Year', y='Value')
-
-#     fig.update_traces(mode='lines+markers')
-
-#     fig.update_xaxes(showgrid=False)
-
-#     fig.update_yaxes(type='linear' if axis_type == 'Linear' else 'log')
-
-#     fig.add_annotation(x=0, y=0.85, xanchor='left', yanchor='bottom',
-#                        xref='paper', yref='paper', showarrow=False, align='left',
-#                        bgcolor='rgba(255, 255, 255, 0.5)', text=title)
-
-#     fig.update_layout(height=225, margin={'l': 20, 'b': 30, 'r': 10, 't': 10})
-
-#     return fig
-
-
-# @app.callback(
-#     dash.dependencies.Output('x-time-series', 'figure'),
-#     [dash.dependencies.Input('crossfilter-indicator-scatter', 'hoverData'),
-#      dash.dependencies.Input('crossfilter-xaxis-column', 'value'),
-#      dash.dependencies.Input('crossfilter-xaxis-type', 'value')])
-# def update_y_timeseries(hoverData, xaxis_column_name, axis_type):
-#     country_name = hoverData['points'][0]['customdata']
-#     dff = df[df['Country Name'] == country_name]
-#     dff = dff[dff['Indicator Name'] == xaxis_column_name]
-#     title = '<b>{}</b><br>{}'.format(country_name, xaxis_column_name)
-#     return create_time_series(dff, axis_type, title)
-
-
-# @app.callback(
-#     dash.dependencies.Output('y-time-series', 'figure'),
-#     [dash.dependencies.Input('crossfilter-indicator-scatter', 'hoverData'),
-#      dash.dependencies.Input('crossfilter-yaxis-column', 'value'),
-#      dash.dependencies.Input('crossfilter-yaxis-type', 'value')])
-# def update_x_timeseries(hoverData, yaxis_column_name, axis_type):
-#     dff = df[df['Country Name'] == hoverData['points'][0]['customdata']]
-#     dff = dff[dff['Indicator Name'] == yaxis_column_name]
-#     return create_time_series(dff, axis_type, yaxis_column_name)
-
-# @app.callback(
-#     dash.dependencies.Output('y-time-series', 'figure'),
-#     [dash.dependencies.Input('crossfilter-indicator-scatter', 'hoverData'),
-#      dash.dependencies.Input('crossfilter-yaxis-column', 'value'),
-#      dash.dependencies.Input('crossfilter-yaxis-type', 'value')])
-# def update_x_timeseries(hoverData, yaxis_column_name, axis_type):
-#     dff = df[df['Country Name'] == hoverData['points'][0]['customdata']]
-#     dff = dff[dff['Indicator Name'] == yaxis_column_name]
-#     return create_time_series(dff, axis_type, yaxis_column_name)
+# Update the index
+@app.callback(dash.dependencies.Output('page-content', 'children'),
+              [dash.dependencies.Input('url', 'pathname')])
+def display_page(pathname):
+    if pathname == '/poteka':
+        return poteka_layout
+    elif pathname == '/earthnetworks':
+        return earthnetworks_layout
+    else:
+        return index_page
+    # You could also return a 404 "URL not found" page here
 
 
 if __name__ == '__main__':
-    app.run_server(debug=True, port=8080, host='0.0.0.0')
+    app.run_server(debug=True, port=80, host='0.0.0.0')

@@ -21,7 +21,8 @@ def convert_PST(time):
 
 def applyConversionFactor(input_value,parameter_id):
     #Catch Error Values
-    divide_by_ten_parameters = [2,125,126,127,128,5,6,9,129,132,133,135,48]
+    divide_by_ten_parameters = [2,125,126,127,128,5,6,9,129,132,133,135,48,116]
+    divide_by_one_hundred_parameters = [112,114,115]
     if(input_value=="////" or input_value=="ERR" or input_value=="/////"):
         return '0'
     #Catch Values with conversion factor applied

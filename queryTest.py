@@ -8,6 +8,7 @@ from time import time as timer
 import fetchFunctions as Fetcher
 import pandas as pd
 import processFunctions as Processer
+import requests
 
 start = timer()
 
@@ -16,8 +17,8 @@ station_details = station_details.astype(str)
 
 
 #Edit this if you wanna change date and time THIS IS IN PST
-timeStartString = '2020-01-12 18:30:00'
-timeEndString = '2020-01-12 21:29:59'
+timeStartString = '2020-05-27 18:30:00'
+timeEndString = '2020-05-27 21:29:59'
 #timeEndString = '2020-11-01 23:59:59'
 
 print(station_details)
@@ -544,15 +545,28 @@ final_dataframe = stringEvents
 #final_dataframe.to_csv('./outputs/may_15_pressure.csv', index=False)
 #print(final_dataframe)
 
+payload = {'start_date': timeStartString,
+			'end_date':timeEndString,
+			'flash_type':0
+		}
+pagasa_response = requests.get(
+    'http://192.168.6.179:8080/earthnetworks',
+    params=payload,
+)
+
+pagasa_json = pagasa_response.content
+print('json here')
+pagasa_df = pd.read_json(pagasa_json,orient='records')
+print(pagasa_df)
 
 
 #timestamps = final_dataframe.index.astype(str).tolist()
 #print(timestamps)
 
-#pagasa_data = pd.read_csv('./lightning_data_monthly_2020/lightning_data_05_2020.csv', dtype=object)
+#pagasa_data = pd.read_csv('./pagasa_data/outputs/lightning_data_05_2020.csv', dtype=object)
 #pagasa_data_range = pagasa_data
 
-# pagasa_data = pagasa_data[pagasa_data.lightning_time.isin(timestamps)]
+#pagasa_data = pagasa_data[pagasa_data.lightning_time.isin(timestamps)]
 
 # pagasa_data_range['lightning_time'] = pd.to_datetime(pagasa_data_range['lightning_time'])
 # date_mask = (pagasa_data_range['lightning_time'] > timeStartString) & (pagasa_data_range['lightning_time'] <= timeEndString)
