@@ -98,8 +98,8 @@ def fetch_earthnetworks_data():
 def fetch_vpoteka_data():
     
     
-    start_date = request.arg.get('start_date')
-    end_date = request.arg.get('end_date')
+    start_date = request.args.get('start_date')
+    end_date = request.args.get('end_date')
     vpoteka_df = vfiltered(start_date,end_date)
 
 

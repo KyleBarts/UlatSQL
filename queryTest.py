@@ -14,6 +14,9 @@ start = timer()
 
 station_details = pd.read_csv('StationDetails2.csv', dtype=object, names=['Station Name','Serial'])
 station_details = station_details.astype(str)
+station_dict = {}
+for index, row in station_details.iterrows():
+    station_dict[row['Serial']]=row['Station Name']
 
 
 #Edit this if you wanna change date and time THIS IS IN PST
@@ -116,6 +119,60 @@ def v_lightning_event_filtered(timeStart,timeEnd):
 	#final_dataframe = final_dataframe.groupby(['datetime_read'])['station_id'].agg(' '.join).reset_index()
 
 	return (final_dataframe)
+
+
+def v_lightning_event_filtered_new(timeStart,timeEnd):
+    vStationsToQuery = ['00173478','00174736','00181303','00181305','00181306','00181310']
+
+    parametersToQuery = [146] 
+    response = Fetcher.newLightningFetchFunction(timeStart,timeEnd,vStationsToQuery,parametersToQuery)
+    count = response[0] #Integer representing # of readings in query
+    events = response[1] #Query object containing raw readings to be processed into dataframe
+    print(f'response received at {timer()-start}')
+    print(events)
+    
+    events['|TPP-TPN|'] = abs(events['tpp'] - events['tpn'])
+
+    events = events.drop(columns=['id'])
+
+    #Filter out all events where |TPP-TP| < 0.2
+    filtered_events = events[events['|TPP-TPN|']>=0.2].reset_index(drop=1)
+    
+    print(filtered_events)
+    #Uncomment this if unfiltered data is needed
+    #filtered_events = events
+
+    
+    #Group events by the second
+    grouped_events = filtered_events.groupby('datetime').agg(lambda x: list(x))
+    print(grouped_events)
+    print('Grouped above')
+    
+    #Filter out all groups with less than 3 events
+    grouped_atleast3_events = grouped_events[grouped_events['station_id'].map(len)>2]
+    #grouped_atleast3_events = grouped_events
+    print(grouped_atleast3_events)
+    print('Grouped with 3 events above')
+    #Count number of distinct stations per group
+    grouped_atleast3_events['Distinct Stations'] = grouped_atleast3_events['station_id'].apply(lambda x: len(set(x)))
+
+    #Filter out all groups with less than 3 unique stations
+    grouped_atleast3_events = grouped_atleast3_events[grouped_atleast3_events['Distinct Stations'] >2]
+
+    #This is for counting total number of events
+    grouped_atleast3_events['Event Count'] = grouped_atleast3_events['station_id'].apply(lambda x: len(x))
+
+    #This is for mapping all events to their station names    
+    grouped_atleast3_events['Station Names'] = grouped_atleast3_events['station_id'].apply(lambda x: list(pd.Series(x).map(station_dict)))
+
+    ordered_columns = ["Distinct Stations","Event Count","station_id","Station Names","tps","tpp","tpz","tpn","app","apn","apf","apc","|TPP-TPN|"]
+
+
+    final_dataframe = grouped_atleast3_events
+    
+    final_dataframe = final_dataframe.reindex(columns=ordered_columns)
+    return final_dataframe
+
 def v_lightning_event_monthly_count(timeStart,timeEnd):
 	VstationsToQuery = ['00173478','00174736','00181303','00181305','00181306','00181310']
 	#VstationsToQuery = ['00174727']
@@ -545,6 +602,8 @@ final_dataframe = stringEvents
 #final_dataframe.to_csv('./outputs/may_15_pressure.csv', index=False)
 #print(final_dataframe)
 
+import requests
+
 payload = {'start_date': timeStartString,
 			'end_date':timeEndString,
 			'flash_type':0
@@ -555,7 +614,6 @@ pagasa_response = requests.get(
 )
 
 pagasa_json = pagasa_response.content
-print('json here')
 pagasa_df = pd.read_json(pagasa_json,orient='records')
 print(pagasa_df)
 
