@@ -52,7 +52,7 @@ def check_getEN_inputs(args):
         
         current_month = current_date.strftime('%m')
         current_year = current_date.strftime('%Y')
-        filename_format = f'../pagasa_data/outputs/lightning_data_{current_month}_{current_year}.csv'
+        filename_format = f'/pagasa_data/outputs/lightning_data_{current_month}_{current_year}.csv'
         filename_list.append(filename_format)
         current_date = current_date + relativedelta(months=+1)
     # for month in range(int_start_month,int_end_month+1):
