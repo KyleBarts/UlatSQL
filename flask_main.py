@@ -101,11 +101,13 @@ def fetch_vpoteka_data():
     start_date = request.args.get('start_date')
     end_date = request.args.get('end_date')
     vpoteka_df = vfiltered(start_date,end_date)
-
+    #data_response['lightning_time']=data_response.index
+    vpoteka_df.insert(0,'lightning_time',vpoteka_df.index)
 
     print(vpoteka_df)
-    
+
     data_response= vpoteka_df.to_json(orient="records")
+
     
     
     

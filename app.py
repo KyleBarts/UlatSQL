@@ -219,7 +219,13 @@ earthnetworks_layout = html.Div([
             ], style={'width': '49%', 'float': 'left', 'display': 'inline-block'}),
         #Parameter Select Dropdown
         html.Div([
+                dcc.Checklist(id='earthnetworks-vpoteka-match',
+                    options=[
+                        {'label': 'Match V-POTEKA Data', 'value': True},
+                    ],
+                    value=[],
 
+                ), 
                 html.Button('Submit', 
                 id='earthnetworks-submit-val', 
                 n_clicks=0,
@@ -243,8 +249,9 @@ earthnetworks_layout = html.Div([
     dash.dependencies.Output('earthnetworks-map', 'figure'),
     [dash.dependencies.Input('earthnetworks-submit-val', 'n_clicks'),
     dash.dependencies.State('earthnetworks-input-start-date', 'value'),
-    dash.dependencies.State('earthnetworks-input-end-date', 'value')])
-def earthnetworks_update_output(n_clicks, start_date, end_date):
+    dash.dependencies.State('earthnetworks-input-end-date', 'value'),
+    dash.dependencies.State('earthnetworks-vpoteka-match', 'value')])
+def earthnetworks_update_output(n_clicks, start_date, end_date, match):
     out_string = 'The input value was "{}" and the button has been clicked {} times'.format(
         start_date,
         n_clicks
@@ -259,10 +266,10 @@ def earthnetworks_update_output(n_clicks, start_date, end_date):
             'http://192.168.6.179:8080/earthnetworks',
             params=payload,
         )
-
+        
         pagasa_json = pagasa_response.content
         pagasa_df = pd.read_json(pagasa_json,orient='records')
-        print(pagasa_df)
+        #print(pagasa_df)
         
         en_data_lat = pagasa_df.latitude
         en_data_lon = pagasa_df.longitude
@@ -281,6 +288,45 @@ def earthnetworks_update_output(n_clicks, start_date, end_date):
         text=en_data_time,
         hoverinfo='text'
         ))
+
+        if(len(match)>0):
+            v_payload = {'start_date': start_date,
+                'end_date':end_date
+            }
+            v_response = requests.get(
+                'http://192.168.6.179:8080/vpoteka',
+                params=v_payload,
+            )
+            vpoteka_json = v_response.content
+            vpoteka_df = pd.read_json(vpoteka_json,orient='records')
+
+            print(vpoteka_df)
+            #First collect all seconds where vpoteka lightning occurs
+            timestamps = vpoteka_df['datetime_read'].astype(str).tolist()
+            print(timestamps)
+            #Filter Pagasa Data according to collected seconds
+            matched_pagasa_df = pagasa_df[pagasa_df.lightning_time.isin(timestamps)]
+
+            matched_data_lat = matched_pagasa_df.latitude
+            matched_data_lon = matched_pagasa_df.longitude
+            matched_data_time = matched_pagasa_df.lightning_time
+
+            fig.add_trace(go.Scattermapbox(
+                lat=matched_data_lat,
+                lon=matched_data_lon,
+                mode='markers',
+                marker=go.scattermapbox.Marker(
+                    size=5,
+                    color='rgb(255,0,0)',
+                    opacity=0.7
+                ),
+                text=matched_data_time,
+                hoverinfo='text'
+                ))
+
+
+
+            
 
         fig.update_layout(
             title='PAGASA Lightning Events',
@@ -317,4 +363,4 @@ def display_page(pathname):
 
 
 if __name__ == '__main__':
-    app.run_server(debug=True, port=80, host='0.0.0.0')
+    app.run_server(debug=False, dev_tools_ui=None, dev_tools_hot_reload=True,dev_tools_props_check=False, port=80, host='0.0.0.0')
