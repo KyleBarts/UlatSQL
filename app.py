@@ -410,7 +410,7 @@ def ppoteka_count_update_output(n_clicks, start_date, end_date):
             'end_date':end_date
         }
         p_response = requests.get(
-            'http://localhost:8080/ppoteka/count',
+            'http://192.168.6.179:8080/ppoteka/count',
             params=p_payload,
         )
         ppoteka_json = p_response.content
