@@ -222,10 +222,10 @@ def per_min_event_count_no_events(df):
 
     '''
     #df['datetime_read'] = df['datetime_read'].apply(convert_PST)
-    df['datetime_read'] = df['datetime_read'].apply(drop_seconds)
+    df['datetime'] = df['datetime'].apply(drop_seconds)
     
 
-    new = df.groupby(['station_id','datetime_read'])['reading'].agg(['count']).reset_index()
+    new = df.groupby(['station_id','datetime'])['station_id'].agg(['count']).reset_index()
 
     print(new)
     

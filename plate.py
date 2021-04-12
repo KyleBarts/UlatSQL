@@ -17,8 +17,8 @@ new_timezone = pytz.timezone("Asia/Manila")
 
 #pprint.pprint(readingDetailsDict)
 
-class Lightning(Base):
-    __tablename__ = 'tbl_vlf'
+class Plate(Base):
+    __tablename__ = 'tbl_plate'
     __table_args__ = {'extend_existing': True}
     __table_args__ = {'schema' : 'ulat'}
 
@@ -26,17 +26,14 @@ class Lightning(Base):
     time=Column('datetime', DateTime)
     station_id = Column('station_id', String)
 
-    tps = Column('tps', Numeric)
-    tpp = Column('tpp', Numeric)
-    tpz = Column('tpz', Numeric)
-    tpn = Column('tpn', Numeric)
+    tps = Column('tm0', Numeric)
+    tpp = Column('tm1', Numeric)
+    tpz = Column('de0', Numeric)
+    tpn = Column('de1', Numeric)
 
-    app = Column('app', Numeric)
-    apn = Column('apn', Numeric)
-    apf = Column('apf', Numeric)
-    apc = Column('apc', Numeric)
+    app = Column('gps', Numeric)
+    apn = Column('psd', Numeric)
 
-    apc = Column('vtr', Numeric)
 
 
 

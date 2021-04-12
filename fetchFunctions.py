@@ -1,5 +1,6 @@
 from reading import Reading
 from lightning import Lightning
+from plate import Plate
 from health import Health
 from base import Session
 from station import Station
@@ -295,6 +296,30 @@ def newLightningFetchFunction(datetimeStart, datetimeEnd,stationList,parameterLi
 	count = events.size
 	return count,events
 
+
+def newPlateFetchFunction(datetimeStart, datetimeEnd,stationList):
+	""" The most customizable, generic fetch function keeping relative simpliciyu
+	INPUTS
+	string datetimeStart: starting date and time in string with format "YYYY-MM-DD HH:MM:SS"
+	string datetimeEnd: starting date and time in string with same format
+	list stationList: list of strings signifying station ID number example ['00173478','00174736']
+	list parameterList: list if ints signifying parameters to be searched example [145,146,147]
+	OUTPUTS
+	integer count: number of readings returned
+	events: pandas dataframe object of actual readings returned NOTE these are readings and not lightning events. 
+	refer to parameter list to know which readings refer to lightning events
+	"""
+	timeStart= datetime.strptime(datetimeStart, '%Y-%m-%d %H:%M:%S')
+	timeEnd = datetime.strptime(datetimeEnd , '%Y-%m-%d %H:%M:%S')
+	timeStartPST = convert_to_utc(timeStart)
+	timeEndPST = convert_to_utc(timeEnd)
+	events = pd.read_sql( session.query(Plate).filter(Plate.time >= timeStartPST, Plate.time <= timeEndPST, Plate.station_id.in_(stationList)).order_by(Plate.time).statement, session.bind)
+	#events = pd.read_sql(session.query(Reading).filter(Reading.time >= timeStartPST, Reading.time <= timeEndPST, Reading.parameter_id.in_(parameterList)).order_by(Reading.parameter_id).statement,session.bind) 
+	#events = pd.read_sql(session.query(Lightning).filter(Plate.time >= timeStartPST, Plate.time <= timeEndPST, Plate.station_id.in_(stationList), Plate.parameter_id.in_(parameterList)).statement,session.bind) 
+	events['datetime'] = events['datetime'].apply(lambda x: x + timedelta(hours=8))
+	#count = get_count(events)
+	count = events.size
+	return count,events
 
 
 

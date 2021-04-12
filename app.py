@@ -31,9 +31,7 @@ external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 
 app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
 
-df = pd.read_csv('https://plotly.github.io/datasets/country_indicators.csv')
 
-available_indicators = df['Indicator Name'].unique()
 
 station_names = stations['location']
 
@@ -43,9 +41,12 @@ app.layout = html.Div([
 ])
 
 index_page = html.Div([
-    dcc.Link('Go to POTEKA Data viewer', href='/poteka'),
+    dcc.Link('Go to POTEKA Data viewer', href='/vpoteka'),
+    html.Br(),
+    dcc.Link('Go to P-POTEKA Lightning Counter', href='/ppoteka/count'),
     html.Br(),
     dcc.Link('Go to EarthNetworks Data Viewer', href='/earthnetworks'),
+
 ])
 
 
@@ -88,7 +89,7 @@ poteka_layout = html.Div([
                     
                 ),
                 html.Button('Submit', 
-                id='poteka_submit-val', 
+                id='poteka-submit-val', 
                 n_clicks=0,
                 style={'width': '25%', 'display': 'inline-block'})
             ], style={'width': '100%', 'display': 'inline-block'})
@@ -160,6 +161,7 @@ def update_output(n_clicks, station_name, reading_name, start_date, end_date):
         
 
         return fig
+
 mapbox_access_token = open(".mapbox_token").read()
 
 layout = go.Layout(
@@ -302,7 +304,7 @@ def earthnetworks_update_output(n_clicks, start_date, end_date, match):
 
             print(vpoteka_df)
             #First collect all seconds where vpoteka lightning occurs
-            timestamps = vpoteka_df['datetime_read'].astype(str).tolist()
+            timestamps = vpoteka_df['lightning_time'].tolist()
             print(timestamps)
             #Filter Pagasa Data according to collected seconds
             matched_pagasa_df = pagasa_df[pagasa_df.lightning_time.isin(timestamps)]
@@ -348,19 +350,105 @@ def earthnetworks_update_output(n_clicks, start_date, end_date, match):
 
 
     return fig
-    
+
+
+
+ppoteka_count_layout = html.Div([
+    html.Div([
+        #Start & End Date Text Inputs
+        html.Div([
+                dcc.Input(
+                id="ppoteka-count-input-start-date",
+                type="text",
+                placeholder="input start date (ex. '2020-05-15 07:45:00') ",
+                style={'width': '49%', 'display': 'inline-block'}
+                ),
+                dcc.Input(
+                id="ppoteka-count-input-end-date",
+                type="text",
+                placeholder="input end date",
+                style={'width': '49%', 'display': 'inline-block'}
+                )
+            ], style={'width': '49%', 'float': 'left', 'display': 'inline-block'}),
+        #Parameter Select Dropdown
+        html.Div([
+                html.Button('Submit', 
+                id='ppoteka-count-submit-val', 
+                n_clicks=0,
+                style={'width': '25%', 'display': 'inline-block'})
+            ], style={'width': '100%', 'display': 'inline-block'})
+
+
+    ], style={
+        'borderBottom': 'thin lightgrey solid',
+        'backgroundColor': 'rgb(250, 250, 250)',
+        'padding': '25px 5px'
+    }),
+    #Graph 
+    html.Div([
+        dcc.Graph(id='ppoteka-lightning-count')
+    ], style={'display': 'inline-block', 'width': '100%'})
+])
+
+@app.callback(
+    dash.dependencies.Output('ppoteka-lightning-count', 'figure'),
+    [dash.dependencies.Input('ppoteka-count-submit-val', 'n_clicks'),
+    dash.dependencies.State('ppoteka-count-input-start-date', 'value'),
+    dash.dependencies.State('ppoteka-count-input-end-date', 'value')])
+def ppoteka_count_update_output(n_clicks, start_date, end_date):
+    out_string = 'The input value was "{}" and the button has been clicked {} times'.format(
+        start_date,
+        n_clicks
+    )
+    print(out_string)
+
+
+    if None not in (start_date, end_date):
+        print('COMPLETE')
+
+        p_payload = {'start_date': start_date,
+            'end_date':end_date
+        }
+        p_response = requests.get(
+            'http://localhost:8080/ppoteka/count',
+            params=p_payload,
+        )
+        ppoteka_json = p_response.content
+        print(ppoteka_json)
+        ppoteka_df = pd.read_json(ppoteka_json,orient='records')
+        ppoteka_df['count'] = ppoteka_df['count'].astype(float)
+
+
+        #events['reading'] = events['reading'].to_numeric()
+        print(ppoteka_df)
+        #ppoteka_df['count'] = ppoteka_df['count'].to_numeric()
+
+        fig = px.scatter(ppoteka_df, x='datetime', y='count', color='Station Name')
+        fig.update_traces(mode='lines+markers')
+        fig.update_yaxes(title='P-POTEKA Lightning Count')
+        fig.update_xaxes(title='Date & Time (PST)')
+        
+        fig.show()
+        return fig
+
+
+
+
+
 # Update the index
 @app.callback(dash.dependencies.Output('page-content', 'children'),
               [dash.dependencies.Input('url', 'pathname')])
 def display_page(pathname):
-    if pathname == '/poteka':
+    if pathname == '/vpoteka':
         return poteka_layout
     elif pathname == '/earthnetworks':
         return earthnetworks_layout
+    elif pathname == '/ppoteka/count':
+        return ppoteka_count_layout
     else:
         return index_page
     # You could also return a 404 "URL not found" page here
 
 
 if __name__ == '__main__':
-    app.run_server(debug=False, dev_tools_ui=None, dev_tools_hot_reload=True,dev_tools_props_check=False, port=80, host='0.0.0.0')
+    app.run_server(debug=True, dev_tools_hot_reload=True, port=80, host='0.0.0.0')

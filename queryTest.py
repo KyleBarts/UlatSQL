@@ -165,7 +165,7 @@ def v_lightning_event_filtered_new(timeStart,timeEnd):
     #This is for mapping all events to their station names    
     grouped_atleast3_events['Station Names'] = grouped_atleast3_events['station_id'].apply(lambda x: list(pd.Series(x).map(station_dict)))
 
-    ordered_columns = ["Distinct Stations","Event Count","station_id","Station Names","tps","tpp","tpz","tpn","app","apn","apf","apc","|TPP-TPN|"]
+    ordered_columns = ["Distinct Stations","Event Count","station_id","Station Names","tps","tpp","tpz","tpn","app","apn","apf","apc","|TPP-TPN|",'vtr']
 
 
     final_dataframe = grouped_atleast3_events
@@ -229,13 +229,14 @@ def p_lightning_event_minute_count(timeStart,timeEnd):
 	pStationsToQuery = pStationIDList
 	#pStationsToQuery = ['00174727']
 	parametersToQuery = [138]
-	response = Fetcher.genericFetchFunction(timeStart,timeEnd,pStationsToQuery,parametersToQuery)
+	response = Fetcher.newPlateFetchFunction(timeStart,timeEnd,pStationsToQuery)  
 	count = response[0] #Integer representing # of readings in query
 	events = response[1] #Query object containing raw readings to be processed into dataframe
 	print(f'response received at {timer()-start}')
 	print(events)
 	final_dataframe = events.astype(str) #convert everything to string for pandas compatibility
 	final_dataframe = Processer.per_min_event_count_no_events(final_dataframe)
+	final_dataframe = final_dataframe.sort_values(by=['datetime'])
 	#final_dataframe = Processer.new_per_hour_event_count_no_events(final_dataframe)
 	final_dataframe.insert(1,'Station Name', '')
 	final_dataframe['Station Name'] = final_dataframe.apply(Processer.join_station_name_to_row,args=(station_details,), axis=1)
@@ -243,8 +244,7 @@ def p_lightning_event_minute_count(timeStart,timeEnd):
 
 def p_lightning_event_generic(timeStart,timeEnd):
 	pStationsToQuery = pStationIDList
-	parametersToQuery = [138]
-	response = Fetcher.genericFetchFunction(timeStart,timeEnd,pStationsToQuery,parametersToQuery)
+	response = Fetcher.newPlateFetchFunction(timeStart,timeEnd,pStationsToQuery)
 	count = response[0] #Integer representing # of readings in query
 	events = response[1] #Query object containing raw readings to be processed into dataframe
 	print(f'response received at {timer()-start}')
@@ -254,6 +254,7 @@ def p_lightning_event_generic(timeStart,timeEnd):
 	#final_dataframe = final_dataframe.groupby(['datetime_read'])['station_id'].agg(' '.join).reset_index()
 
 	return (final_dataframe)
+
 
 def aws_generic(timeStart,timeEnd):
 	pStationsToQuery = pStationIDList 
@@ -576,8 +577,7 @@ final_dataframe = stringEvents
 # final_dataframe = Processer.append_microseconds_to_datetime(final_dataframe)
 # final_dataframe = Processer.append_time_diff(final_dataframe)
 
-#For P Poteka Lightning Event Count Per Minute
-#final_dataframe = p_lightning_event_minute_count(timeStartString, timeEndString)
+
 
 #For AWS Stuff
 #final_dataframe = aws_generic(timeStartString, timeEndString)
@@ -590,6 +590,12 @@ final_dataframe = stringEvents
 #For Generating QGIS Lightning Event
 #final_dataframe = qgis_format_generator_lightning_count(timeStartString, timeEndString)
 
+#For fetching plate events
+#final_dataframe = p_lightning_event_generic(timeStartString, timeEndString)
+
+#For P Poteka Lightning Event Count Per Minute
+#final_dataframe = p_lightning_event_minute_count(timeStartString, timeEndString)
+
 #Universal adjustments
 #final_dataframe.insert(1,'Station Name', '')
 #final_dataframe['Station Name'] = final_dataframe.apply(Processer.join_station_name_to_row,args=(station_details,), axis=1)
@@ -599,7 +605,7 @@ final_dataframe = stringEvents
 
 
 #Saving to csv for vizualization
-#final_dataframe.to_csv('./outputs/may_15_pressure.csv', index=False)
+#final_dataframe.to_csv('./outputs/plate_count.csv', index=False)
 #print(final_dataframe)
 
 # import requests
