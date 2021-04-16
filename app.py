@@ -492,7 +492,7 @@ def ppoteka_count_update_output(n_clicks, start_date, end_date):
             'end_date':end_date
         }
         v_response = requests.get(
-            'http://localhost:8080/vpoteka/count',
+            'http://192.168.6.179:8080/vpoteka/count',
             params=v_payload,
         )
         vpoteka_json = v_response.content
