@@ -41,11 +41,14 @@ app.layout = html.Div([
 ])
 
 index_page = html.Div([
-    dcc.Link('Go to POTEKA Data viewer', href='/vpoteka'),
+    dcc.Link('Go to V POTEKA Data viewer', href='/vpoteka'),
+    html.Br(),
+    dcc.Link('Go to V-POTEKA Lightning Counter', href='/vpoteka/count'),
     html.Br(),
     dcc.Link('Go to P-POTEKA Lightning Counter', href='/ppoteka/count'),
     html.Br(),
     dcc.Link('Go to EarthNetworks Data Viewer', href='/earthnetworks'),
+
 
 ])
 
@@ -432,6 +435,84 @@ def ppoteka_count_update_output(n_clicks, start_date, end_date):
         return fig
 
 
+vpoteka_count_layout = html.Div([
+    html.Div([
+        #Start & End Date Text Inputs
+        html.Div([
+                dcc.Input(
+                id="vpoteka-count-input-start-date",
+                type="text",
+                placeholder="input start date (ex. '2020-05-15 07:45:00') ",
+                style={'width': '49%', 'display': 'inline-block'}
+                ),
+                dcc.Input(
+                id="vpoteka-count-input-end-date",
+                type="text",
+                placeholder="input end date",
+                style={'width': '49%', 'display': 'inline-block'}
+                )
+            ], style={'width': '49%', 'float': 'left', 'display': 'inline-block'}),
+        #Parameter Select Dropdown
+        html.Div([
+                html.Button('Submit', 
+                id='vpoteka-count-submit-val', 
+                n_clicks=0,
+                style={'width': '25%', 'display': 'inline-block'})
+            ], style={'width': '100%', 'display': 'inline-block'})
+
+
+    ], style={
+        'borderBottom': 'thin lightgrey solid',
+        'backgroundColor': 'rgb(250, 250, 250)',
+        'padding': '25px 5px'
+    }),
+    #Graph 
+    html.Div([
+        dcc.Graph(id='vpoteka-lightning-count')
+    ], style={'display': 'inline-block', 'width': '100%'})
+])
+
+@app.callback(
+    dash.dependencies.Output('vpoteka-lightning-count', 'figure'),
+    [dash.dependencies.Input('vpoteka-count-submit-val', 'n_clicks'),
+    dash.dependencies.State('vpoteka-count-input-start-date', 'value'),
+    dash.dependencies.State('vpoteka-count-input-end-date', 'value')])
+def ppoteka_count_update_output(n_clicks, start_date, end_date):
+    out_string = 'The input value was "{}" and the button has been clicked {} times'.format(
+        start_date,
+        n_clicks
+    )
+    print(out_string)
+
+
+    if None not in (start_date, end_date):
+        print('COMPLETE')
+
+        v_payload = {'start_date': start_date,
+            'end_date':end_date
+        }
+        v_response = requests.get(
+            'http://localhost:8080/vpoteka/count',
+            params=v_payload,
+        )
+        vpoteka_json = v_response.content
+        print(vpoteka_json)
+        vpoteka_df = pd.read_json(vpoteka_json,orient='records')
+        vpoteka_df['count'] = vpoteka_df['count'].astype(float)
+
+
+        #events['reading'] = events['reading'].to_numeric()
+        print(vpoteka_df)
+        #ppoteka_df['count'] = ppoteka_df['count'].to_numeric()
+
+        fig = px.scatter(vpoteka_df, x='datetime', y='count', color='Station Name')
+        fig.update_traces(mode='lines+markers')
+        fig.update_yaxes(title='P-POTEKA Lightning Count')
+        fig.update_xaxes(title='Date & Time (PST)')
+        
+        fig.show()
+        return fig
+
 
 
 
@@ -445,6 +526,8 @@ def display_page(pathname):
         return earthnetworks_layout
     elif pathname == '/ppoteka/count':
         return ppoteka_count_layout
+    elif pathname == '/vpoteka/count':
+        return vpoteka_count_layout
     else:
         return index_page
     # You could also return a 404 "URL not found" page here

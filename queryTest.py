@@ -191,11 +191,12 @@ def v_lightning_event_monthly_count(timeStart,timeEnd):
 
 
 def v_lightning_event_minute_count(timeStart,timeEnd):
-	VstationsToQuery = ['00173478','00174736','00181303','00181305','00181306','00181310']
+	vStationsToQuery = ['00173478','00174736','00181303','00181305','00181306','00181310']
 	
 	#VstationsToQuery = ['00174727']
 	parametersToQuery = [145]
-	response = Fetcher.genericFetchFunction(timeStart,timeEnd,VstationsToQuery,parametersToQuery)
+	response = Fetcher.newLightningFetchFunction(timeStart,timeEnd,vStationsToQuery,parametersToQuery)
+	
 	count = response[0] #Integer representing # of readings in query
 	events = response[1] #Query object containing raw readings to be processed into dataframe
 	print(f'response received at {timer()-start}')

@@ -2,7 +2,7 @@ from flask import Flask, request, jsonify, abort, json
 from flask_restful import Resource, Api
 from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
-from queryTest import v_lightning_event_filtered_new as vfiltered, p_lightning_event_minute_count
+from queryTest import v_lightning_event_filtered_new as vfiltered, p_lightning_event_minute_count, v_lightning_event_minute_count
 
 import pandas as pd
 
@@ -114,6 +114,27 @@ def fetch_vpoteka_data():
     #Send data
     return data_response
 
+@app.route('/vpoteka/count', methods=['GET'])
+def fetch_vpoteka_count():
+    
+    #Get user inputs
+    start_date = request.args.get('start_date')
+    end_date = request.args.get('end_date')
+
+    #Execute python script for fetching filtered V poteka data
+    ppoteka_df = v_lightning_event_minute_count(start_date,end_date)
+    
+    #Insert lightning_time column
+    ppoteka_df.insert(0,'lightning_time',ppoteka_df['datetime'])
+    ppoteka_df['lightning_time'] = pd.to_datetime(ppoteka_df['lightning_time'])
+
+    #Convert dataframe to json
+    data_response= ppoteka_df.to_json(orient="records")
+
+    
+    #Send data
+    return data_response
+
 @app.route('/ppoteka/count', methods=['GET'])
 def fetch_ppoteka_count():
     
@@ -134,6 +155,8 @@ def fetch_ppoteka_count():
     
     #Send data
     return data_response
+
+
 
 
 if __name__ == '__main__':
