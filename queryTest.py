@@ -12,7 +12,7 @@ import requests
 
 start = timer()
 
-station_details = pd.read_csv('StationDetails2.csv', dtype=object, names=['Station Name','Serial'])
+station_details = pd.read_csv('StationDetails2.csv', dtype=object, names=['Station Name','Serial','Station Type'])
 station_details = station_details.astype(str)
 station_dict = {}
 for index, row in station_details.iterrows():
@@ -208,6 +208,35 @@ def v_lightning_event_minute_count(timeStart,timeEnd):
 	final_dataframe['Station Name'] = final_dataframe.apply(Processer.join_station_name_to_row,args=(station_details,), axis=1)
 	return (final_dataframe)
 
+def v_lightning_event_minute_count_report(timeStart,timeEnd):
+	vStationsToQuery = ['00173478','00174736','00181303','00181305','00181306','00181310']
+	
+	parametersToQuery = [145]
+	response = Fetcher.newLightningFetchFunction(timeStart,timeEnd,vStationsToQuery,parametersToQuery)
+	
+	count = response[0] #Integer representing # of readings in query
+	events = response[1] #Query object containing raw readings to be processed into dataframe
+	print(f'response received at {timer()-start}')
+	print(events)
+	final_dataframe = events.astype(str) #convert everything to string for pandas compatibility
+	final_dataframe = Processer.per_min_event_count_no_events(final_dataframe)
+
+	final_dataframe = final_dataframe.groupby('station_id', as_index=False)['count'].sum()
+	final_dataframe = final_dataframe.rename(columns={'count':'lightning_count'})
+	detected_station = final_dataframe['station_id'].tolist()
+	print(detected_station)
+	print(station_details)
+	stations_df = station_details.rename(columns={'Serial':'station_id'})
+	stations_df = stations_df[stations_df['Station Type']=='V']
+	stations_df['lightning_count'] = 0
+	
+	print(stations_df)
+	stations_df['lightning_count'] = stations_df.apply(lambda x: final_dataframe.loc[final_dataframe['station_id']==x.station_id]['lightning_count'].iloc[0] if x.station_id in detected_station else 0, axis=1 )
+	print(stations_df)
+	final_dataframe.insert(1,'Station Name', '')
+	final_dataframe['Station Name'] = final_dataframe.apply(Processer.join_station_name_to_row,args=(station_details,), axis=1)
+	return (stations_df)
+
 def v_lightning_event_matcher(timeStart,timeEnd):
 	VstationsToQuery = ['00173478','00174736','00181303','00181305','00181306','00181310']
 	#VstationsToQuery = ['00173478','00174736','00181305','00181310']
@@ -229,7 +258,7 @@ def v_lightning_event_matcher(timeStart,timeEnd):
 def p_lightning_event_minute_count(timeStart,timeEnd):
 	pStationsToQuery = pStationIDList
 	#pStationsToQuery = ['00174727']
-	parametersToQuery = [138]
+
 	response = Fetcher.newPlateFetchFunction(timeStart,timeEnd,pStationsToQuery)  
 	count = response[0] #Integer representing # of readings in query
 	events = response[1] #Query object containing raw readings to be processed into dataframe
@@ -243,6 +272,34 @@ def p_lightning_event_minute_count(timeStart,timeEnd):
 	final_dataframe['Station Name'] = final_dataframe.apply(Processer.join_station_name_to_row,args=(station_details,), axis=1)
 	return (final_dataframe)
 
+def p_lightning_event_minute_count_report(timeStart,timeEnd):
+	pStationsToQuery = pStationIDList
+	
+	parametersToQuery = [138]
+	response = Fetcher.newPlateFetchFunction(timeStart,timeEnd,pStationsToQuery) 
+	
+	count = response[0] #Integer representing # of readings in query
+	events = response[1] #Query object containing raw readings to be processed into dataframe
+	print(f'response received at {timer()-start}')
+	print(events)
+	final_dataframe = events.astype(str) #convert everything to string for pandas compatibility
+	final_dataframe = Processer.per_min_event_count_no_events(final_dataframe)
+
+	final_dataframe = final_dataframe.groupby('station_id', as_index=False)['count'].sum()
+	final_dataframe = final_dataframe.rename(columns={'count':'lightning_count'})
+	detected_station = final_dataframe['station_id'].tolist()
+	print(detected_station)
+	print(station_details)
+	stations_df = station_details.rename(columns={'Serial':'station_id'})
+	stations_df = stations_df[stations_df['Station Type']=='P']
+	stations_df['lightning_count'] = 0
+	
+	print(stations_df)
+	stations_df['lightning_count'] = stations_df.apply(lambda x: final_dataframe.loc[final_dataframe['station_id']==x.station_id]['lightning_count'].iloc[0] if x.station_id in detected_station else 0, axis=1 )
+	print(stations_df)
+	final_dataframe.insert(1,'Station Name', '')
+	final_dataframe['Station Name'] = final_dataframe.apply(Processer.join_station_name_to_row,args=(station_details,), axis=1)
+	return (stations_df)
 def p_lightning_event_generic(timeStart,timeEnd):
 	pStationsToQuery = pStationIDList
 	response = Fetcher.newPlateFetchFunction(timeStart,timeEnd,pStationsToQuery)
@@ -269,6 +326,29 @@ def aws_generic(timeStart,timeEnd):
 	response = Fetcher.genericFetchFunction(timeStart,timeEnd,pStationsToQuery,[133])
 	count = response[0] #Integer representing # of readings in query
 	events = response[1] #Query object containing raw readings to be processed into dataframe
+	print(f'response received at {timer()-start}')
+	print(events)
+	
+	final_dataframe = events.astype(str) #convert everything to string for pandas compatibility
+	#final_dataframe = final_dataframe.groupby(['datetime_read'])['station_id'].agg(' '.join).reset_index()
+	final_dataframe.insert(1,'Station Name', '')
+	final_dataframe['Station Name'] = final_dataframe.apply(Processer.join_station_name_to_row,args=(station_details,), axis=1)
+	return (final_dataframe)
+
+def aws_generic_rolledup(timeStart,timeEnd):
+	pStationsToQuery = pStationIDList 
+	pStationsToQuery = ['00181305']
+	#aws_parameters = [2,5,6,9,12,48,125,126,127,128,129,130,131,132,133,134,135,136,137]
+	aws_parameters = [133]
+	#133 is Max wind speed in 1 min
+	#127 is Effective rain amount
+	#5 is Temperature
+
+	response = Fetcher.genericFetchFunction(timeStart,timeEnd,pStationsToQuery,[133])
+	count = response[0] #Integer representing # of readings in query
+	events = response[1] #Query object containing raw readings to be processed into dataframe
+	
+	
 	print(f'response received at {timer()-start}')
 	print(events)
 	
@@ -582,6 +662,9 @@ final_dataframe = stringEvents
 
 #For AWS Stuff
 #final_dataframe = aws_generic(timeStartString, timeEndString)
+#final_dataframe = generic(timeStartString, timeEndString)
+
+#For Rolling up to minite
 
 #For Generating QGIS Format
 #final_dataframe = qgis_format_generator_temp(timeStartString, timeEndString)

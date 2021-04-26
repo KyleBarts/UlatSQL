@@ -6,6 +6,7 @@ from time import time as timer
 import numpy as np
 import time
 import pandas as pd
+from geopy.distance import geodesic
 
 def drop_minutes(time):
     output_time = datetime.strptime(time, '%Y-%m-%d %H:%M:%S').replace(minute=0,second=0)
@@ -108,7 +109,7 @@ def per_min_rain(df):
     print(df)
     return df
 
-def rollup_every_15_mins(current_time):
+def rollup_every_15_mins(current_time,time_gap):
     current_time = datetime.strptime(current_time, '%Y-%m-%d %H:%M:%S')
    # print(current_time)
     #current_time = current_time + timedelta(hours=8) #convert to PST
@@ -118,14 +119,16 @@ def rollup_every_15_mins(current_time):
         current_time = current_time + timedelta(minutes=1)
     #print(minute)
     minute = current_time.minute
-    if minute == 0: return current_time
-    if minute <= 15: return current_time.replace(minute=15)
-    if minute <= 30: return current_time.replace(minute=30)
-    if minute <= 45: return current_time.replace(minute=45)
-    if minute > 45: 
-        current_time = current_time + timedelta(hours= 1)
-        return current_time.replace(minute=0)
-        
+    current_gap = 0
+    while (current_gap<60):
+        if minute == 0: return current_time
+        if minute <= 15: return current_time.replace(minute=15)
+        if minute <= 30: return current_time.replace(minute=30)
+        if minute <= 45: return current_time.replace(minute=45)
+        if minute > 45: 
+            current_time = current_time + timedelta(hours= 1)
+            return current_time.replace(minute=0)
+    
 def append_microseconds_to_datetime(df):
 
     df['datetime'] = df['datetime_read'].apply(lambda x: np.datetime64(datetime.strptime(x, '%Y-%m-%d %H:%M:%S'), 'ns' ))
@@ -283,3 +286,70 @@ def return_lon_to_row(row, station_details):
 	row['lon'] = current_lon
 	#current_station_name = 'hello'
 	return current_lon
+
+
+def match_earthnetwork_to_geolocated(earthnetworks_df, geolocated_df):
+    geolocated_timestamps = geolocated_df['lightning_time'].tolist()
+    matched_earthnetworks_df = earthnetworks_df[earthnetworks_df.lightning_time.isin(geolocated_timestamps)]
+    print(geolocated_df)
+    print(matched_earthnetworks_df)
+
+    geolocated_grouped_df = geolocated_df
+    # geolocated_grouped_df = geolocated_df.groupby('lightning_time')[['lat','lon']].agg(lambda x: tuple(x)).applymap(list)
+    # geolocated_grouped_df['lightning_time'] = geolocated_grouped_df.index
+    print(geolocated_grouped_df)
+
+    earthnetworks_grouped_df = matched_earthnetworks_df.groupby('lightning_time')[['latitude','longitude']].agg(lambda x: tuple(x)).applymap(list)
+    earthnetworks_grouped_df['lightning_time'] = earthnetworks_grouped_df.index
+    print(earthnetworks_grouped_df)
+
+    
+    geolocated_grouped_df = geolocated_grouped_df.apply(lambda x: insert_earthnetworks_coordinates(x,earthnetworks_grouped_df), axis=1 )  
+    print(geolocated_grouped_df)
+    geolocated_grouped_df.to_csv('./outputs/koshak_new_testing_match.csv')
+    return True
+
+def insert_earthnetworks_coordinates(row, en_df):
+    print('entered')
+
+    current_datetime = row['lightning_time']
+
+    en_row = en_df.loc[en_df['lightning_time']==current_datetime ]
+    # print(row)
+    # print(en_row)
+    geo_lats = row['lat']
+    geo_lon = row['lon']
+    # print(geo_lats)
+    # print(geo_lon)
+    #coords = np.array(zip(en_lats,en_lon))
+    geo_coords = (geo_lats,geo_lon)
+    row['geo_coords'] = geo_coords
+    
+    if en_row.empty == False:
+        coords = []
+        en_lats = en_row['latitude'].values[0]
+        en_lon = en_row['longitude'].values[0]
+        # print(en_lats)
+        # print(en_lon)
+        #coords = np.array(zip(en_lats,en_lon))
+        coords = list(map(tuple, zip(en_lats,en_lon)))
+        # print(coords)
+        row['en_coords'] = coords
+        geo_distances = []
+        for item in coords:
+            geo_distances.append(geodesic(geo_coords,item).km)
+        print('distances below')
+        print(geo_distances)
+        row['geo_distances'] = geo_distances
+        # for item in en_lats:
+        #     current_coord = (it)
+        #     coords.append()
+        # row['en_lat'] = en_row['latitude'].values[0]
+        # row['en_lon'] = en_row['longitude'].values[0]
+
+    
+
+
+
+
+    return row

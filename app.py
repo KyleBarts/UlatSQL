@@ -226,10 +226,9 @@ earthnetworks_layout = html.Div([
         html.Div([
                 dcc.Checklist(id='earthnetworks-vpoteka-match',
                     options=[
-                        {'label': 'Match V-POTEKA Data', 'value': True},
+                        {'label': 'Match V-POTEKA Data', 'value': 'True'},
                     ],
                     value=[],
-
                 ), 
                 html.Button('Submit', 
                 id='earthnetworks-submit-val', 
@@ -316,6 +315,10 @@ def earthnetworks_update_output(n_clicks, start_date, end_date, match):
             matched_data_lon = matched_pagasa_df.longitude
             matched_data_time = matched_pagasa_df.lightning_time
 
+            geolocated_df = pd.read_csv("./asti_geolocation/koshak_new.csv")
+            #print(geolocated_df)
+            Processer.match_earthnetwork_to_geolocated(pagasa_df,geolocated_df)
+
             fig.add_trace(go.Scattermapbox(
                 lat=matched_data_lat,
                 lon=matched_data_lon,
@@ -328,10 +331,24 @@ def earthnetworks_update_output(n_clicks, start_date, end_date, match):
                 text=matched_data_time,
                 hoverinfo='text'
                 ))
-
-
-
             
+            geo_data_lat = geolocated_df.lat
+            geo_data_lon = geolocated_df.lon
+            geo_data_time = geolocated_df.lightning_time
+
+            fig.add_trace(go.Scattermapbox(
+                lat=geo_data_lat,
+                lon=geo_data_lon,
+                mode='markers',
+                marker=go.scattermapbox.Marker(
+                    size=5,
+                    color='rgb(0,255,0)',
+                    opacity=0.7
+                ),
+                text=geo_data_time,
+                hoverinfo='text'
+                ))
+
 
         fig.update_layout(
             title='PAGASA Lightning Events',
@@ -350,8 +367,7 @@ def earthnetworks_update_output(n_clicks, start_date, end_date, match):
                 style='dark'
             ),
         )
-
-
+            
     return fig
 
 
@@ -477,7 +493,7 @@ vpoteka_count_layout = html.Div([
     [dash.dependencies.Input('vpoteka-count-submit-val', 'n_clicks'),
     dash.dependencies.State('vpoteka-count-input-start-date', 'value'),
     dash.dependencies.State('vpoteka-count-input-end-date', 'value')])
-def ppoteka_count_update_output(n_clicks, start_date, end_date):
+def vpoteka_count_update_output(n_clicks, start_date, end_date):
     out_string = 'The input value was "{}" and the button has been clicked {} times'.format(
         start_date,
         n_clicks

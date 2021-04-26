@@ -2,7 +2,7 @@ from flask import Flask, request, jsonify, abort, json
 from flask_restful import Resource, Api
 from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
-from queryTest import v_lightning_event_filtered_new as vfiltered, p_lightning_event_minute_count, v_lightning_event_minute_count
+from queryTest import v_lightning_event_filtered_new as vfiltered, p_lightning_event_minute_count,p_lightning_event_minute_count_report, v_lightning_event_minute_count,v_lightning_event_minute_count_report
 
 import pandas as pd
 
@@ -135,6 +135,32 @@ def fetch_vpoteka_count():
     #Send data
     return data_response
 
+@app.route('/vpoteka/countreport', methods=['GET'])
+def fetch_vpoteka_count_report():
+    time_period_minutes = int(request.args.get('timeframe_minutes'))
+    now = datetime.now()
+    before = now - timedelta(minutes=time_period_minutes)
+
+    current_time = now.strftime("%Y-%m-%d %H:%M:%S")
+    prev_time = before.strftime("%Y-%m-%d %H:%M:%S")
+
+    #Get user inputs
+    start_date = prev_time
+    end_date = current_time
+
+    #Execute python script for fetching filtered V poteka data
+    vpoteka_df = v_lightning_event_minute_count_report(start_date,end_date)
+
+    print(vpoteka_df)
+
+    #Convert dataframe to json
+    data_response= vpoteka_df.to_json(orient="records")
+
+    
+    #Send data
+    return data_response
+    
+
 @app.route('/ppoteka/count', methods=['GET'])
 def fetch_ppoteka_count():
     
@@ -148,6 +174,31 @@ def fetch_ppoteka_count():
     #Insert lightning_time column
     ppoteka_df.insert(0,'lightning_time',ppoteka_df['datetime'])
     ppoteka_df['lightning_time'] = pd.to_datetime(ppoteka_df['lightning_time'])
+
+    #Convert dataframe to json
+    data_response= ppoteka_df.to_json(orient="records")
+
+    
+    #Send data
+    return data_response
+
+@app.route('/ppoteka/countreport', methods=['GET'])
+def fetch_ppoteka_count_report():
+    time_period_minutes = int(request.args.get('timeframe_minutes'))
+    now = datetime.now()
+    before = now - timedelta(minutes=time_period_minutes)
+
+    current_time = now.strftime("%Y-%m-%d %H:%M:%S")
+    prev_time = before.strftime("%Y-%m-%d %H:%M:%S")
+
+    #Get user inputs
+    start_date = prev_time
+    end_date = current_time
+
+    #Execute python script for fetching filtered V poteka data
+    ppoteka_df = p_lightning_event_minute_count_report(start_date,end_date)
+
+    print(ppoteka_df)
 
     #Convert dataframe to json
     data_response= ppoteka_df.to_json(orient="records")
